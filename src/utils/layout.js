@@ -1,0 +1,239 @@
+export const CANVAS_WIDTH = 1440;
+export const PADDING = 64;
+export const HEADER_HEIGHT = 64;
+const USABLE_WIDTH = CANVAS_WIDTH - 2 * PADDING;
+
+const BASE_ROW_HEIGHT = 108;
+
+// Parse a single token: "6" or "6(4+2)" or "4.5(2+2.5)"
+function parseToken(raw) {
+  const trimmed = raw.trim();
+  const subMatch = trimmed.match(/^(\d+\.?\d*)\(([^)]+)\)$/);
+  if (subMatch) {
+    const length = parseFloat(subMatch[1]);
+    const subPhrases = subMatch[2]
+      .split('+')
+      .map(s => parseFloat(s.trim()))
+      .filter(n => !isNaN(n) && n > 0);
+    return { length, subPhrases };
+  }
+  const n = parseFloat(trimmed);
+  if (!isNaN(n) && n > 0) return { length: n, subPhrases: [] };
+  return null;
+}
+
+// Tokenize a line, keeping parenthetical groups intact.
+// Returns [{token, start, end}] with character offsets into the original line.
+function tokenizeLine(line) {
+  const tokens = [];
+  let i = 0;
+  while (i < line.length) {
+    if (/[\s,]/.test(line[i])) { i++; continue; }
+    let j = i, depth = 0;
+    while (j < line.length) {
+      if (line[j] === '(') depth++;
+      else if (line[j] === ')') { depth--; if (depth < 0) break; }
+      else if (/[\s,]/.test(line[j]) && depth === 0) break;
+      j++;
+    }
+    if (j > i) tokens.push({ token: line.slice(i, j), start: i, end: j });
+    i = j;
+  }
+  return tokens;
+}
+
+// Parse the quick-entry textarea into phrases + line-break set.
+// Each line → one row; numbers separated by spaces/commas.
+// Subphrase syntax: 6(4+2) creates an outer phrase of 6 with two inner phrases.
+export function parseQuickEntry(text) {
+  if (!text.trim()) return { phrases: [], lineBreakIndices: new Set() };
+
+  const lines = text.split('\n');
+  const phrases = [];
+  const lineBreakIndices = new Set();
+  let barCounter = 1;
+
+  let lineOffset = 0;
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (trimmed) {
+      const tokens = tokenizeLine(line);
+
+      for (let ti = 0; ti < tokens.length; ti++) {
+        const { token, start, end } = tokens[ti];
+        const parsed = parseToken(token);
+        if (!parsed) continue;
+
+        const idx = phrases.length;
+        if (idx > 0 && ti === 0) lineBreakIndices.add(idx);
+
+        phrases.push({
+          id: `p${idx}`,
+          startBar: barCounter,
+          length: parsed.length,
+          subPhrases: parsed.subPhrases,
+          textStart: lineOffset + start,
+          textEnd: lineOffset + end,
+        });
+        barCounter = Math.round((barCounter + parsed.length) * 1000) / 1000;
+      }
+    }
+    lineOffset += line.length + 1; // +1 for the \n separator
+  }
+
+  return { phrases, lineBreakIndices };
+}
+
+// Extra top padding per minimum section level in a row.
+// Level 0 (Broad) is drawn highest so needs the most headroom.
+// minLevel 0 → 82px, 1 → 56px, 2 → 30px, -1 (none) → 0px.
+function rowTopPaddingForLevel(minLevel) {
+  return minLevel >= 0 ? (2 - minLevel) * 26 + 30 : 0;
+}
+
+export function computeLayout(phrases, lineBreakIndices, structuralMarkers = []) {
+  if (!phrases.length) {
+    return { rows: [], totalHeight: HEADER_HEIGHT + 60, CANVAS_WIDTH, HEADER_HEIGHT, PADDING };
+  }
+
+  // Group phrases into rows
+  const rows = [];
+  let current = [];
+  for (let i = 0; i < phrases.length; i++) {
+    if (lineBreakIndices.has(i) && current.length > 0) {
+      rows.push(current);
+      current = [];
+    }
+    current.push({ ...phrases[i], phraseIndex: i });
+  }
+  if (current.length > 0) rows.push(current);
+
+  // Determine min section level per row (lower index = Broad = highest visual position = more padding)
+  const rowMinLevels = rows.map(row => {
+    const rowStartBar = row[0].startBar;
+    const last = row[row.length - 1];
+    const rowEndBar = last.startBar + last.length;
+    let minLevel = Infinity;
+    for (const marker of structuralMarkers) {
+      if (marker.startBar >= rowStartBar && marker.startBar < rowEndBar) {
+        minLevel = Math.min(minLevel, marker.level ?? 0);
+      }
+    }
+    return minLevel === Infinity ? -1 : minLevel;
+  });
+
+  let yOffset = HEADER_HEIGHT;
+
+  const positionedRows = rows.map((row, rowIndex) => {
+    const topPadding = rowTopPaddingForLevel(rowMinLevels[rowIndex]);
+    const rowHeight = BASE_ROW_HEIGHT + topPadding;
+    const totalBars = row.reduce((sum, p) => sum + p.length, 0);
+    const barWidth = USABLE_WIDTH / totalBars;
+    const rowY = yOffset;
+
+    // slurY sits within the slur zone (below the section-marker top zone)
+    const slurY = rowY + topPadding + Math.round(BASE_ROW_HEIGHT * 0.68);
+
+    yOffset += rowHeight;
+
+    let x = PADDING;
+    const positionedPhrases = row.map(phrase => {
+      const px = x;
+      const width = phrase.length * barWidth;
+
+      // Calculate sub-phrase pixel positions, proportional within parent phrase
+      const subPhrasePositions = [];
+      if (phrase.subPhrases && phrase.subPhrases.length > 0) {
+        const totalSubBars = phrase.subPhrases.reduce((s, l) => s + l, 0);
+        let subX = px;
+        let subBar = phrase.startBar;
+        for (const subLen of phrase.subPhrases) {
+          const subWidth = (subLen / totalSubBars) * width;
+          subPhrasePositions.push({ x: subX, width: subWidth, length: subLen, startBar: subBar });
+          subX += subWidth;
+          subBar = Math.round((subBar + subLen) * 1000) / 1000;
+        }
+      }
+
+      x += width;
+      return { ...phrase, x: px, width, slurY, subPhrasePositions };
+    });
+
+    return { phrases: positionedPhrases, rowY, slurY, rowIndex, rowEndX: x, rowHeight };
+  });
+
+  return {
+    rows: positionedRows,
+    totalHeight: yOffset + 48,
+    CANVAS_WIDTH,
+    HEADER_HEIGHT,
+    PADDING,
+  };
+}
+
+// Find the x position and row for any bar number, interpolating within phrases.
+// Phrase starts are checked first so that a bar sitting exactly at a row boundary
+// (end of row N = start of row N+1) maps to the new row's left edge, not the
+// old row's right edge. This ensures rehearsal marks appear on the following line.
+export function barToPosition(bar, rows) {
+  // Pass 1: exact phrase starts (highest priority)
+  for (const row of rows) {
+    for (const p of row.phrases) {
+      if (bar === p.startBar) {
+        return { x: p.x, slurY: row.slurY, rowIndex: row.rowIndex };
+      }
+    }
+  }
+  // Pass 2: interpolate within phrases
+  for (const row of rows) {
+    for (const p of row.phrases) {
+      const endBar = p.startBar + p.length;
+      if (bar > p.startBar && bar <= endBar) {
+        const frac = (bar - p.startBar) / p.length;
+        return { x: p.x + frac * p.width, slurY: row.slurY, rowIndex: row.rowIndex };
+      }
+    }
+  }
+  return null;
+}
+
+export function formatBar(bar) {
+  return Number.isInteger(bar) ? String(bar) : bar.toFixed(1);
+}
+
+export function formatLength(n) {
+  return Number.isInteger(n) ? String(n) : n.toFixed(1);
+}
+
+// Given an SVG x (and optionally y) coordinate, snap to the nearest phrase boundary bar number.
+// When svgY is provided the search is restricted to whichever row the click landed in.
+export function xToNearestPhrase(svgX, rows, svgY) {
+  let candidateRows = rows;
+  if (svgY != null) {
+    const hit = rows.find(r => svgY >= r.rowY && svgY < r.rowY + r.rowHeight);
+    if (hit) candidateRows = [hit];
+  }
+
+  let nearest = null;
+  let nearestDist = Infinity;
+
+  for (const row of candidateRows) {
+    for (const phrase of row.phrases) {
+      const startDist = Math.abs(svgX - phrase.x);
+      if (startDist < nearestDist) {
+        nearestDist = startDist;
+        nearest = phrase.startBar;
+      }
+      const endX = phrase.x + phrase.width;
+      const endDist = Math.abs(svgX - endX);
+      if (endDist < nearestDist) {
+        nearestDist = endDist;
+        nearest = phrase.startBar + phrase.length;
+      }
+    }
+  }
+
+  if (nearest === null) return null;
+  // Round to nearest integer or half-bar
+  return Math.round(nearest * 2) / 2;
+}
