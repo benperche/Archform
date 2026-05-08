@@ -6,19 +6,30 @@ const USABLE_WIDTH = CANVAS_WIDTH - 2 * PADDING;
 const BASE_ROW_HEIGHT = 108;
 
 // Parse a single token: "6" or "6(4+2)" or "4.5(2+2.5)"
+// Returns { length, subPhrases, subTextRanges } where subTextRanges are
+// char offsets *within the token string* for each sub-number.
 function parseToken(raw) {
   const trimmed = raw.trim();
   const subMatch = trimmed.match(/^(\d+\.?\d*)\(([^)]+)\)$/);
   if (subMatch) {
     const length = parseFloat(subMatch[1]);
-    const subPhrases = subMatch[2]
-      .split('+')
-      .map(s => parseFloat(s.trim()))
-      .filter(n => !isNaN(n) && n > 0);
-    return { length, subPhrases };
+    const innerStr = subMatch[2];
+    const prefixLen = subMatch[1].length + 1; // e.g. "7(" = 2 chars
+    const subPhrases = [];
+    const subTextRanges = [];
+    const numRe = /\d+\.?\d*/g;
+    let m;
+    while ((m = numRe.exec(innerStr)) !== null) {
+      const n = parseFloat(m[0]);
+      if (n > 0) {
+        subPhrases.push(n);
+        subTextRanges.push({ start: prefixLen + m.index, end: prefixLen + m.index + m[0].length });
+      }
+    }
+    return { length, subPhrases, subTextRanges };
   }
   const n = parseFloat(trimmed);
-  if (!isNaN(n) && n > 0) return { length: n, subPhrases: [] };
+  if (!isNaN(n) && n > 0) return { length: n, subPhrases: [], subTextRanges: [] };
   return null;
 }
 
@@ -72,6 +83,7 @@ export function parseQuickEntry(text) {
           startBar: barCounter,
           length: parsed.length,
           subPhrases: parsed.subPhrases,
+          subTextRanges: parsed.subTextRanges,
           textStart: lineOffset + start,
           textEnd: lineOffset + end,
         });
@@ -147,9 +159,18 @@ export function computeLayout(phrases, lineBreakIndices, structuralMarkers = [])
         const totalSubBars = phrase.subPhrases.reduce((s, l) => s + l, 0);
         let subX = px;
         let subBar = phrase.startBar;
-        for (const subLen of phrase.subPhrases) {
+        for (let si = 0; si < phrase.subPhrases.length; si++) {
+          const subLen = phrase.subPhrases[si];
           const subWidth = (subLen / totalSubBars) * width;
-          subPhrasePositions.push({ x: subX, width: subWidth, length: subLen, startBar: subBar });
+          const range = phrase.subTextRanges?.[si];
+          subPhrasePositions.push({
+            x: subX,
+            width: subWidth,
+            length: subLen,
+            startBar: subBar,
+            textStart: range != null ? phrase.textStart + range.start : phrase.textStart,
+            textEnd: range != null ? phrase.textStart + range.end : phrase.textEnd,
+          });
           subX += subWidth;
           subBar = Math.round((subBar + subLen) * 1000) / 1000;
         }

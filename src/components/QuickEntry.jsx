@@ -1,6 +1,6 @@
 import { useRef, useEffect } from 'react';
 
-export default function QuickEntry({ text, onChange, phrases, selectedPhraseIndex }) {
+export default function QuickEntry({ text, onChange, phrases, textSelection }) {
   const textareaRef = useRef(null);
 
   const lastPhrase = phrases[phrases.length - 1];
@@ -8,14 +8,11 @@ export default function QuickEntry({ text, onChange, phrases, selectedPhraseInde
     ? Math.ceil(lastPhrase.startBar + lastPhrase.length - 1)
     : 0;
 
-  // When a phrase is selected in the diagram, highlight its token in the textarea
   useEffect(() => {
-    if (selectedPhraseIndex == null || !textareaRef.current) return;
-    const phrase = phrases[selectedPhraseIndex];
-    if (!phrase || phrase.textStart == null) return;
+    if (!textSelection || !textareaRef.current) return;
     textareaRef.current.focus();
-    textareaRef.current.setSelectionRange(phrase.textStart, phrase.textEnd);
-  }, [selectedPhraseIndex, phrases]);
+    textareaRef.current.setSelectionRange(textSelection.start, textSelection.end);
+  }, [textSelection]);
 
   return (
     <div className="quick-entry">

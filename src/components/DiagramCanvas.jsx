@@ -326,7 +326,9 @@ export default function DiagramCanvas({
   selectedPhraseIndex,
   editMode,
   barPickMode,
+  svgRef,
   onSelectPhrase,
+  onSubPhraseClick,
   onSlurStartClick,
   onRemoveRehearsalMark,
   onBarPick,
@@ -361,6 +363,7 @@ export default function DiagramCanvas({
   return (
     <div className={`canvas-container${barPickMode ? ' canvas-bar-pick' : ''}`}>
       <svg
+        ref={svgRef}
         viewBox={`0 0 ${W} ${totalHeight}`}
         onClick={handleSvgClick}
         style={barPickMode ? { cursor: 'crosshair' } : undefined}
@@ -463,7 +466,12 @@ export default function DiagramCanvas({
                     x2={sp.x + sp.width} y2={phrase.slurY}
                     length={sp.length}
                     showPlus={si > 0}
-                    onClick={() => onSelectPhrase(phrase.phraseIndex === selectedPhraseIndex ? null : phrase.phraseIndex)}
+                    onClick={() => onSubPhraseClick(
+                      phrase.phraseIndex,
+                      sp.textStart,
+                      sp.textEnd,
+                      phrase.phraseIndex === selectedPhraseIndex,
+                    )}
                   />
                 ))}
               </g>

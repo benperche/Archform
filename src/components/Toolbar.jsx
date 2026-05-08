@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import FileMenu from './FileMenu';
 
 const MARK_STYLES = [
@@ -6,6 +6,37 @@ const MARK_STYLES = [
   { value: 'numbers', label: 'Numbers' },
   { value: 'bars', label: 'Bar numbers' },
 ];
+
+function ExportMenu({ onExportJSON, onExportSVG, onExportPNG }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef();
+
+  // Close on outside click
+  const handleBlur = e => {
+    if (!ref.current?.contains(e.relatedTarget)) setOpen(false);
+  };
+
+  return (
+    <div className="file-menu" ref={ref} onBlur={handleBlur}>
+      <button className={`btn ${open ? 'btn-active' : ''}`} onClick={() => setOpen(o => !o)}>
+        Export ▾
+      </button>
+      {open && (
+        <div className="file-dropdown">
+          <button className="export-option" onClick={() => { onExportJSON(); setOpen(false); }}>
+            JSON <span className="export-option-hint">for re-importing</span>
+          </button>
+          <button className="export-option" onClick={() => { onExportSVG(); setOpen(false); }}>
+            SVG <span className="export-option-hint">vector graphic</span>
+          </button>
+          <button className="export-option" onClick={() => { onExportPNG(); setOpen(false); }}>
+            PNG <span className="export-option-hint">high-res image</span>
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function Toolbar({
   state,
@@ -15,8 +46,14 @@ export default function Toolbar({
   onSwitchFile,
   onDeleteFile,
   onShowHelp,
-  onExport,
+  onUndo,
+  onRedo,
+  onExportJSON,
+  onExportSVG,
+  onExportPNG,
   onImport,
+  onShare,
+  shareCopied,
   onToggleSectionPanel,
   onToggleAnnotationPanel,
   sectionPanelOpen,
@@ -39,7 +76,7 @@ export default function Toolbar({
 
   return (
     <div className={`toolbar ${inMarkMode ? 'toolbar--mark-mode' : ''}`}>
-      {/* Left: file menu + help + title + composer */}
+      {/* Left: file menu + help + undo/redo + title + composer */}
       <FileMenu
         files={fileIndex.files}
         currentId={fileIndex.currentId}
@@ -47,7 +84,11 @@ export default function Toolbar({
         onSwitch={onSwitchFile}
         onDelete={onDeleteFile}
       />
-      <button className="btn" onClick={onShowHelp} title="How to use Phrase Diagrams">?</button>
+      <button className="btn" onClick={onShowHelp} title="How to use Archform">?</button>
+      <div className="toolbar-sep" />
+      <button className="btn toolbar-icon-btn" onClick={onUndo} title="Undo (⌘Z)">↩</button>
+      <button className="btn toolbar-icon-btn" onClick={onRedo} title="Redo (⌘⇧Z)">↪</button>
+      <div className="toolbar-sep" />
       <div className="toolbar-meta">
         <input
           className="title-input"
@@ -63,7 +104,7 @@ export default function Toolbar({
         />
       </div>
 
-      {/* Centre: rehearsal mark mode controls */}
+      {/* Right: panel + mark mode + export + share */}
       {inMarkMode ? (
         <div className="mark-mode-bar">
           <span className="mark-mode-hint">Click a slur start to place a mark · Esc to exit</span>
@@ -102,7 +143,10 @@ export default function Toolbar({
           </button>
           <div className="toolbar-sep" />
           <button className="btn" onClick={() => fileInputRef.current?.click()}>Import</button>
-          <button className="btn" onClick={onExport}>Export</button>
+          <ExportMenu onExportJSON={onExportJSON} onExportSVG={onExportSVG} onExportPNG={onExportPNG} />
+          <button className="btn" onClick={onShare}>
+            {shareCopied ? 'Copied!' : 'Share'}
+          </button>
           <button className="btn btn-primary" onClick={() => window.print()}>Print / PDF</button>
         </div>
       )}

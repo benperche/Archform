@@ -187,6 +187,12 @@ body {
   color: #2563eb;
 }
 
+.toolbar-icon-btn {
+  padding: 5px 9px;
+  font-size: 14px;
+  line-height: 1;
+}
+
 .btn-cancel {
   background: transparent;
   border-color: #93c5fd;
@@ -703,6 +709,31 @@ body {
 }
 .file-item:hover .file-item-delete { opacity: 1; }
 .file-item-delete:hover { color: #e53e3e; background: #fff5f5; }
+
+/* ── Export menu ─────────────────────────────────────────────── */
+
+.export-option {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 14px;
+  text-align: left;
+  background: none;
+  border: none;
+  font-size: 12px;
+  font-family: inherit;
+  color: var(--text);
+  cursor: pointer;
+  font-weight: 500;
+}
+.export-option:hover { background: #f6f4f0; }
+
+.export-option-hint {
+  font-weight: 400;
+  color: #aaa;
+  font-size: 11px;
+}
 
 /* ── Print ───────────────────────────────────────────────────── */
 
