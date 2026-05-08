@@ -108,7 +108,7 @@ export default function SectionPanel({
         <div className="panel-list">
           {sections.length === 0 ? (
             <p className="panel-empty">No sections yet</p>
-          ) : sections.map(s => (
+          ) : [...sections].sort((a, b) => (a.startBar ?? 0) - (b.startBar ?? 0)).map(s => (
             editingId === s.id ? (
               <div key={s.id} className="panel-item panel-item--editing">
                 <input className="panel-input" value={editFields.label}

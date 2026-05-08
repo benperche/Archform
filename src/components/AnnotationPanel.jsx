@@ -86,7 +86,7 @@ export default function AnnotationPanel({
         <div className="panel-list">
           {annotations.length === 0 ? (
             <p className="panel-empty">No annotations yet</p>
-          ) : annotations.map(a => (
+          ) : [...annotations].sort((a, b) => (a.bar ?? 0) - (b.bar ?? 0)).map(a => (
             editingId === a.id ? (
               <div key={a.id} className="panel-item panel-item--editing">
                 <div className="panel-row">
