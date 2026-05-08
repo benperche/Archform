@@ -100,7 +100,7 @@ function NoteText({ text, x, y, fontSize, fill, fontStyle, fontWeight, textAncho
     </g>
   );
 }
-import { computeLayout, barToPosition, formatBar, formatLength, xToNearestPhrase, CANVAS_WIDTH, PADDING } from '../utils/layout';
+import { barToPosition, formatBar, formatLength, xToNearestPhrase, CANVAS_WIDTH, PADDING } from '../utils/layout';
 
 // Y on a cubic bezier with control-point y values: slurY, cpY, cpY, slurY
 function bezierY(t, slurY, cpY) {
@@ -120,11 +120,17 @@ function mainArchParams(x, width, slurY) {
   return { x1, x2, cpY, archHeight, cp1x, cp2x };
 }
 
-// A main phrase slur with center length label, ticks, and start bar number
-function Slur({ x, width, slurY, startBar, length, isLastInRow, endBar, selected, editMode, hasMarkAtBar, onClick, onStartClick }) {
-  const { x1, x2, cpY, cp1x, cp2x } = mainArchParams(x, width, slurY);
+// A main phrase slur with center length label, ticks, and start bar number.
+// visualX: left edge of the arch (shifted left when there is an overlap).
+// x: nominal bar position (used for bar labels and rehearsal mark placement).
+function Slur({ x, visualX, width, slurY, startBar, length, isLastInRow, endBar, overlapPx, selected, editMode, hasMarkAtBar, onClick, onStartClick }) {
+  const hasOverlap = overlapPx > 0;
+  const { x1, x2, cpY, cp1x, cp2x } = mainArchParams(visualX, width, slurY);
   const d = `M ${x1} ${slurY} C ${cp1x} ${cpY} ${cp2x} ${cpY} ${x2} ${slurY}`;
   const mid = { x: (x1 + x2) / 2, y: bezierY(0.5, slurY, cpY) };
+
+  // Nominal start x (for bar number, rehearsal mark, elision dot)
+  const nx = x + 1;
 
   const inMarkMode = editMode === 'rehearsalMarks';
   const stroke = selected ? '#2563eb' : '#1a1a1a';
@@ -137,12 +143,17 @@ function Slur({ x, width, slurY, startBar, length, isLastInRow, endBar, selected
       {/* Slur arc */}
       <path d={d} fill="none" stroke={stroke} strokeWidth={selected ? 2 : 1.5} strokeLinecap="round" />
 
-      {/* Start tick */}
+      {/* Start tick (at visual start) */}
       <line x1={x1} y1={slurY - 6} x2={x1} y2={slurY + 3} stroke={stroke} strokeWidth={1.2} />
       {/* End tick */}
       <line x1={x2} y1={slurY - 6} x2={x2} y2={slurY + 3} stroke={stroke} strokeWidth={1.2} />
 
-      {/* Center phrase length — baseline placed so text bottom clears the arch peak */}
+      {/* Elision dot at nominal bar position when phrase overlaps previous */}
+      {hasOverlap && (
+        <circle cx={nx} cy={slurY} r={3.5} fill={stroke} style={{ pointerEvents: 'none' }} />
+      )}
+
+      {/* Center phrase length */}
       <text
         x={mid.x}
         y={mid.y - 10}
@@ -154,9 +165,9 @@ function Slur({ x, width, slurY, startBar, length, isLastInRow, endBar, selected
         {formatLength(length)}
       </text>
 
-      {/* Start bar number (small, below baseline) */}
+      {/* Start bar number — at nominal position */}
       <text
-        x={x1}
+        x={nx}
         y={slurY + 17}
         textAnchor="middle"
         fontSize={9.5}
@@ -180,10 +191,10 @@ function Slur({ x, width, slurY, startBar, length, isLastInRow, endBar, selected
         </text>
       )}
 
-      {/* Rehearsal mark click target (shown in mark mode) */}
+      {/* Rehearsal mark click target — at nominal position */}
       {inMarkMode && (
         <circle
-          cx={x1}
+          cx={nx}
           cy={slurY}
           r={9}
           fill={hasMarkAtBar ? 'rgba(37,99,235,0.18)' : 'rgba(37,99,235,0.07)'}
@@ -317,13 +328,12 @@ function SectionMarker({ x1, x2, y, label, level, levelRank, isOpen, color }) {
 }
 
 export default function DiagramCanvas({
+  layout,
   title,
   composer,
-  phrases,
-  lineBreakIndices,
+  structuralMarkers,
   rehearsalMarks,
   rehearsalMarkStyle,
-  structuralMarkers,
   annotations,
   selectedPhraseIndex,
   editMode,
@@ -335,11 +345,6 @@ export default function DiagramCanvas({
   onRemoveRehearsalMark,
   onBarPick,
 }) {
-  const layout = useMemo(
-    () => computeLayout(phrases, lineBreakIndices, structuralMarkers),
-    [phrases, lineBreakIndices, structuralMarkers]
-  );
-
   const { rows, totalHeight, HEADER_HEIGHT } = layout;
   const W = CANVAS_WIDTH;
 
@@ -459,6 +464,8 @@ export default function DiagramCanvas({
               <g key={phrase.id}>
                 <Slur
                   x={phrase.x}
+                  visualX={phrase.visualX}
+                  overlapPx={phrase.overlapPx}
                   width={phrase.width}
                   slurY={phrase.slurY}
                   startBar={phrase.startBar}
@@ -523,7 +530,7 @@ export default function DiagramCanvas({
         })}
 
         {/* Empty state */}
-        {phrases.length === 0 && (
+        {rows.length === 0 && (
           <text
             x={W / 2} y={HEADER_HEIGHT + 58}
             textAnchor="middle"

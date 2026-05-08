@@ -103,7 +103,7 @@ function rowTopPaddingForLevels(levelSet) {
   return n === 0 ? 0 : (n - 1) * 26 + 30;
 }
 
-export function computeLayout(phrases, lineBreakIndices, structuralMarkers = []) {
+export function computeLayout(phrases, lineBreakIndices, structuralMarkers = [], phraseOverlaps = {}) {
   if (!phrases.length) {
     return { rows: [], totalHeight: HEADER_HEIGHT + 60, CANVAS_WIDTH, HEADER_HEIGHT, PADDING };
   }
@@ -154,11 +154,16 @@ export function computeLayout(phrases, lineBreakIndices, structuralMarkers = [])
       const px = x;
       const width = phrase.length * barWidth;
 
-      // Calculate sub-phrase pixel positions, proportional within parent phrase
+      // Overlap shifts the visual start left; first phrase overall cannot overlap.
+      const overlapBars = phrase.phraseIndex > 0 ? (phraseOverlaps[phrase.startBar] || 0) : 0;
+      const overlapPx = overlapBars * barWidth;
+      const visualX = px - overlapPx;
+
+      // Sub-phrase positions are relative to visualX so they draw correctly.
       const subPhrasePositions = [];
       if (phrase.subPhrases && phrase.subPhrases.length > 0) {
         const totalSubBars = phrase.subPhrases.reduce((s, l) => s + l, 0);
-        let subX = px;
+        let subX = visualX;
         let subBar = phrase.startBar;
         for (let si = 0; si < phrase.subPhrases.length; si++) {
           const subLen = phrase.subPhrases[si];
@@ -178,7 +183,7 @@ export function computeLayout(phrases, lineBreakIndices, structuralMarkers = [])
       }
 
       x += width;
-      return { ...phrase, x: px, width, slurY, subPhrasePositions };
+      return { ...phrase, x: px, visualX, overlapPx, width, slurY, subPhrasePositions };
     });
 
     return { phrases: positionedPhrases, rowY, slurY, rowIndex, rowEndX: x, rowHeight, levelSet };

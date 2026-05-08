@@ -5,7 +5,8 @@ import Toolbar from './components/Toolbar';
 import SectionPanel from './components/SectionPanel';
 import AnnotationPanel from './components/AnnotationPanel';
 import HelpModal from './components/HelpModal';
-import { parseQuickEntry } from './utils/layout';
+import OverlapPopover from './components/OverlapPopover';
+import { parseQuickEntry, computeLayout, CANVAS_WIDTH } from './utils/layout';
 import {
   loadIndex, saveIndex, loadFile, saveFile, deleteFile,
   migrateLegacy, genId, fileName,
@@ -40,6 +41,7 @@ const defaultDiagramState = {
   rehearsalMarkCounter: 0,
   structuralMarkers: [],
   annotations: [],
+  phraseOverlaps: {},
 };
 
 const defaultTransient = {
@@ -216,6 +218,33 @@ export default function App() {
     () => parseQuickEntry(state.quickEntryText),
     [state.quickEntryText]
   );
+
+  const layout = useMemo(
+    () => computeLayout(phrases, lineBreakIndices, state.structuralMarkers, state.phraseOverlaps),
+    [phrases, lineBreakIndices, state.structuralMarkers, state.phraseOverlaps]
+  );
+
+  // Overlap popover position (fixed coordinates derived from SVG rect)
+  const overlapPopoverPos = useMemo(() => {
+    if (state.selectedPhraseIndex == null || !svgRef.current) return null;
+    const phrase = layout.rows.flatMap(r => r.phrases).find(p => p.phraseIndex === state.selectedPhraseIndex);
+    if (!phrase) return null;
+    const svgRect = svgRef.current.getBoundingClientRect();
+    const scale = svgRect.width / CANVAS_WIDTH;
+    return {
+      x: svgRect.left + (phrase.visualX + phrase.width / 2) * scale,
+      y: svgRect.top + (phrase.slurY - 90) * scale,
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.selectedPhraseIndex, layout]);
+
+  const handleOverlapChange = useCallback((startBar, value) => {
+    setState(s => {
+      const next = { ...s.phraseOverlaps };
+      if (!value) delete next[startBar]; else next[startBar] = value;
+      return { ...s, phraseOverlaps: next };
+    });
+  }, []);
 
   // Derive textarea selection from selected phrase or sub-phrase
   const textSelection = useMemo(() => {
@@ -491,13 +520,12 @@ export default function App() {
         <div className="left-side">
           <div className="diagram-area">
             <DiagramCanvas
+              layout={layout}
               title={state.title}
               composer={state.composer}
-              phrases={phrases}
-              lineBreakIndices={lineBreakIndices}
+              structuralMarkers={state.structuralMarkers}
               rehearsalMarks={state.rehearsalMarks}
               rehearsalMarkStyle={state.rehearsalMarkStyle}
-              structuralMarkers={state.structuralMarkers}
               annotations={state.annotations}
               selectedPhraseIndex={state.selectedPhraseIndex}
               editMode={state.editMode}
@@ -509,6 +537,15 @@ export default function App() {
               onRemoveRehearsalMark={handleRemoveRehearsalMark}
               onBarPick={handleBarPick}
             />
+            {state.selectedPhraseIndex != null && overlapPopoverPos && !state.editMode && (
+              <OverlapPopover
+                startBar={phrases[state.selectedPhraseIndex]?.startBar}
+                value={state.phraseOverlaps[phrases[state.selectedPhraseIndex]?.startBar] || 0}
+                position={overlapPopoverPos}
+                onClose={() => setState(s => ({ ...s, selectedPhraseIndex: null, selectedTextRange: null }))}
+                onChange={handleOverlapChange}
+              />
+            )}
           </div>
 
           <QuickEntry
