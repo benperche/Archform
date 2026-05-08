@@ -96,11 +96,11 @@ export function parseQuickEntry(text) {
   return { phrases, lineBreakIndices };
 }
 
-// Extra top padding per minimum section level in a row.
-// Level 0 (Broad) is drawn highest so needs the most headroom.
-// minLevel 0 → 82px, 1 → 56px, 2 → 30px, -1 (none) → 0px.
-function rowTopPaddingForLevel(minLevel) {
-  return minLevel >= 0 ? (2 - minLevel) * 26 + 30 : 0;
+// Top padding is based on how many distinct section levels exist on a row.
+// 0 levels → 0px, 1 level → 30px, 2 levels → 56px, 3 levels → 82px.
+function rowTopPaddingForLevels(levelSet) {
+  const n = levelSet.size;
+  return n === 0 ? 0 : (n - 1) * 26 + 30;
 }
 
 export function computeLayout(phrases, lineBreakIndices, structuralMarkers = []) {
@@ -120,24 +120,25 @@ export function computeLayout(phrases, lineBreakIndices, structuralMarkers = [])
   }
   if (current.length > 0) rows.push(current);
 
-  // Determine min section level per row (lower index = Broad = highest visual position = more padding)
-  const rowMinLevels = rows.map(row => {
+  // Collect the set of distinct section levels that start on each row.
+  const rowLevelSets = rows.map(row => {
     const rowStartBar = row[0].startBar;
     const last = row[row.length - 1];
     const rowEndBar = last.startBar + last.length;
-    let minLevel = Infinity;
+    const levels = new Set();
     for (const marker of structuralMarkers) {
       if (marker.startBar >= rowStartBar && marker.startBar < rowEndBar) {
-        minLevel = Math.min(minLevel, marker.level ?? 0);
+        levels.add(marker.level ?? 0);
       }
     }
-    return minLevel === Infinity ? -1 : minLevel;
+    return levels;
   });
 
   let yOffset = HEADER_HEIGHT;
 
   const positionedRows = rows.map((row, rowIndex) => {
-    const topPadding = rowTopPaddingForLevel(rowMinLevels[rowIndex]);
+    const levelSet = rowLevelSets[rowIndex];
+    const topPadding = rowTopPaddingForLevels(levelSet);
     const rowHeight = BASE_ROW_HEIGHT + topPadding;
     const totalBars = row.reduce((sum, p) => sum + p.length, 0);
     const barWidth = USABLE_WIDTH / totalBars;
@@ -180,7 +181,7 @@ export function computeLayout(phrases, lineBreakIndices, structuralMarkers = [])
       return { ...phrase, x: px, width, slurY, subPhrasePositions };
     });
 
-    return { phrases: positionedPhrases, rowY, slurY, rowIndex, rowEndX: x, rowHeight };
+    return { phrases: positionedPhrases, rowY, slurY, rowIndex, rowEndX: x, rowHeight, levelSet };
   });
 
   return {

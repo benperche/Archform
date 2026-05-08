@@ -283,30 +283,32 @@ function RehearsalMark({ x, y, label, markStyle, onClick }) {
 }
 
 // Structural section marker with optional open end.
-// y is slurY; the line is placed above the tallest possible slur arch (MAIN_MAX_ARCH + 14 gap).
-function SectionMarker({ x1, x2, y, label, level, isOpen }) {
+// levelRank: 0 = innermost (closest to slur), higher = further away.
+// isBroad: true when the absolute level value is 0 (bold/thick styling).
+function SectionMarker({ x1, x2, y, label, level, levelRank, isOpen, color }) {
   const isBroad = level === 0;
-  const levelOffset = (2 - level) * 26;
+  const levelOffset = levelRank * 26;
   const lineY = y - (MAIN_MAX_ARCH + 14) - levelOffset;
   const labelX = isOpen ? x1 + 6 : (x1 + x2) / 2;
   const labelAnchor = isOpen ? 'start' : 'middle';
   const sw = isBroad ? 1.5 : 0.9;
+  const col = color || '#1a1a1a';
 
   return (
     <g>
-      <line x1={x1} y1={lineY} x2={isOpen ? x1 + 30 : x2} y2={lineY} stroke="#1a1a1a" strokeWidth={sw} />
+      <line x1={x1} y1={lineY} x2={isOpen ? x1 + 30 : x2} y2={lineY} stroke={col} strokeWidth={sw} />
       {isOpen && (
         <line x1={x1 + 30} y1={lineY} x2={x1 + 90} y2={lineY}
-          stroke="#1a1a1a" strokeWidth={sw} strokeDasharray="3,4" />
+          stroke={col} strokeWidth={sw} strokeDasharray="3,4" />
       )}
-      <line x1={x1} y1={lineY} x2={x1} y2={y} stroke="#1a1a1a" strokeWidth={sw} />
+      <line x1={x1} y1={lineY} x2={x1} y2={y} stroke={col} strokeWidth={sw} />
       {!isOpen && (
-        <line x1={x2} y1={lineY} x2={x2} y2={y} stroke="#1a1a1a" strokeWidth={sw} />
+        <line x1={x2} y1={lineY} x2={x2} y2={y} stroke={col} strokeWidth={sw} />
       )}
       <NoteText
         text={label}
         x={labelX} y={lineY - 4}
-        fontSize={isBroad ? 11 : 10} fill="#333" fontStyle="italic"
+        fontSize={isBroad ? 11 : 10} fill={col} fontStyle="italic"
         fontWeight={isBroad ? 'bold' : undefined}
         textAnchor={labelAnchor}
       />
@@ -402,6 +404,14 @@ export default function DiagramCanvas({
           if (!startPos) return null;
           const endPos = marker.endBar != null ? getBarPos(marker.endBar) : null;
 
+          // Compute rank of this marker's level within the levels present on its row
+          const startRow = rows[startPos.rowIndex];
+          const levelSet = startRow?.levelSet ?? new Set();
+          const sortedLevels = [...levelSet].sort((a, b) => a - b);
+          const markerLevel = marker.level ?? 0;
+          const levelIdx = sortedLevels.indexOf(markerLevel);
+          const levelRank = levelSet.size - 1 - (levelIdx >= 0 ? levelIdx : 0);
+
           // No end bar, or same row as start: standard rendering
           if (!endPos || endPos.rowIndex === startPos.rowIndex) {
             return (
@@ -411,14 +421,15 @@ export default function DiagramCanvas({
                 x2={endPos ? endPos.x : null}
                 y={startPos.slurY}
                 label={marker.label}
-                level={marker.level || 0}
+                level={markerLevel}
+                levelRank={levelRank}
                 isOpen={!endPos}
+                color={marker.color}
               />
             );
           }
 
           // Marker crosses a row boundary — check if it ends exactly at the row edge
-          const startRow = rows[startPos.rowIndex];
           const lastPhrase = startRow.phrases[startRow.phrases.length - 1];
           const rowEndBar = lastPhrase.startBar + lastPhrase.length;
           const endsAtRowEdge = Math.abs(marker.endBar - rowEndBar) < 0.001;
@@ -430,8 +441,10 @@ export default function DiagramCanvas({
               x2={endsAtRowEdge ? startRow.rowEndX : null}
               y={startPos.slurY}
               label={marker.label}
-              level={marker.level || 0}
+              level={markerLevel}
+              levelRank={levelRank}
               isOpen={!endsAtRowEdge}
+              color={marker.color}
             />
           );
         })}

@@ -2,6 +2,31 @@ import { useState, useEffect, useRef } from 'react';
 
 const LEVEL_LABELS = ['Broad', 'Mid', 'Fine'];
 
+const COLORS = [
+  '#1a1a1a',
+  '#2563eb',
+  '#c0392b',
+  '#16a34a',
+  '#7c3aed',
+  '#d97706',
+];
+
+function ColorPicker({ value, onChange }) {
+  return (
+    <div className="color-picker">
+      {COLORS.map(c => (
+        <button
+          key={c}
+          className={`color-swatch${value === c ? ' color-swatch--active' : ''}`}
+          style={{ background: c }}
+          onClick={() => onChange(c)}
+          title={c}
+        />
+      ))}
+    </div>
+  );
+}
+
 export default function SectionPanel({
   onClose,
   sections,
@@ -15,6 +40,7 @@ export default function SectionPanel({
   const [startBar, setStartBar] = useState('');
   const [endBar, setEndBar] = useState('');
   const [level, setLevel] = useState(0);
+  const [color, setColor] = useState(COLORS[0]);
 
   const [editingId, setEditingId] = useState(null);
   const [editFields, setEditFields] = useState({});
@@ -39,13 +65,19 @@ export default function SectionPanel({
     if (!canAdd) return;
     const sb = parseFloat(startBar);
     const eb = endBar.trim() ? parseFloat(endBar) : null;
-    onAdd({ label: label.trim(), startBar: sb, endBar: isNaN(eb) ? null : eb, level });
-    setLabel(''); setStartBar(''); setEndBar(''); setLevel(0);
+    onAdd({ label: label.trim(), startBar: sb, endBar: isNaN(eb) ? null : eb, level, color });
+    setLabel(''); setStartBar(''); setEndBar(''); setLevel(0); setColor(COLORS[0]);
   };
 
   const startEdit = s => {
     setEditingId(s.id);
-    setEditFields({ label: s.label, startBar: String(s.startBar), endBar: s.endBar != null ? String(s.endBar) : '', level: s.level ?? 0 });
+    setEditFields({
+      label: s.label,
+      startBar: String(s.startBar),
+      endBar: s.endBar != null ? String(s.endBar) : '',
+      level: s.level ?? 0,
+      color: s.color || COLORS[0],
+    });
   };
 
   const ef = v => setEditFields(f => ({ ...f, ...v }));
@@ -54,7 +86,13 @@ export default function SectionPanel({
     const sb = parseFloat(editFields.startBar);
     if (isNaN(sb) || !editFields.label.trim()) return;
     const eb = editFields.endBar?.trim() ? parseFloat(editFields.endBar) : null;
-    onUpdate(editingId, { label: editFields.label.trim(), startBar: sb, endBar: isNaN(eb) ? null : eb, level: editFields.level });
+    onUpdate(editingId, {
+      label: editFields.label.trim(),
+      startBar: sb,
+      endBar: isNaN(eb) ? null : eb,
+      level: editFields.level,
+      color: editFields.color,
+    });
     setEditingId(null); setEditFields({});
   };
 
@@ -100,6 +138,9 @@ export default function SectionPanel({
             ))}
           </div>
 
+          <label className="panel-label">Colour</label>
+          <ColorPicker value={color} onChange={setColor} />
+
           <button className="btn btn-primary panel-add-btn" onClick={handleAdd} disabled={!canAdd}>
             Add section
           </button>
@@ -129,6 +170,9 @@ export default function SectionPanel({
                       onClick={() => ef({ level: i })}>{lbl}</button>
                   ))}
                 </div>
+                <div style={{ marginTop: 6 }}>
+                  <ColorPicker value={editFields.color || COLORS[0]} onChange={c => ef({ color: c })} />
+                </div>
                 <div className="panel-edit-actions">
                   <button className="btn btn-primary" onClick={saveEdit}>Save</button>
                   <button className="btn" onClick={cancelEdit}>Cancel</button>
@@ -137,6 +181,10 @@ export default function SectionPanel({
               </div>
             ) : (
               <div key={s.id} className="panel-item panel-item--clickable" onClick={() => startEdit(s)}>
+                <div
+                  className="section-color-dot"
+                  style={{ background: s.color || COLORS[0] }}
+                />
                 <div className="panel-item-info">
                   <span className="panel-item-label">{s.label}</span>
                   <span className="panel-item-meta">{s.startBar}–{s.endBar != null ? s.endBar : '…'} · {LEVEL_LABELS[s.level] || 'Broad'}</span>
