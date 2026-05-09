@@ -56,8 +56,10 @@ export default function Toolbar({
   shareCopied,
   onToggleSectionPanel,
   onToggleAnnotationPanel,
+  onToggleTimeSigPanel,
   sectionPanelOpen,
   annotationPanelOpen,
+  timeSigPanelOpen,
 }) {
   const fileInputRef = useRef();
 
@@ -137,6 +139,12 @@ export default function Toolbar({
             onClick={onToggleAnnotationPanel}
           >
             Annotations
+          </button>
+          <button
+            className={`btn ${timeSigPanelOpen ? 'btn-active' : ''}`}
+            onClick={onToggleTimeSigPanel}
+          >
+            Time sigs
           </button>
           <button className="btn" onClick={enterMarkMode}>
             Rehearsal marks

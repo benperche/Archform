@@ -6,6 +6,7 @@ import SectionPanel from './components/SectionPanel';
 import AnnotationPanel from './components/AnnotationPanel';
 import HelpModal from './components/HelpModal';
 import OverlapPopover from './components/OverlapPopover';
+import TimeSignaturePanel from './components/TimeSignaturePanel';
 import { parseQuickEntry, computeLayout, CANVAS_WIDTH } from './utils/layout';
 import {
   loadIndex, saveIndex, loadFile, saveFile, deleteFile,
@@ -42,6 +43,7 @@ const defaultDiagramState = {
   structuralMarkers: [],
   annotations: [],
   phraseOverlaps: {},
+  timeSignatures: [],
 };
 
 const defaultTransient = {
@@ -377,6 +379,21 @@ export default function App() {
     setState(s => ({ ...s, annotations: s.annotations.map(a => a.id === id ? { ...a, ...updates } : a) }));
   }, [recordHistory]);
 
+  const handleAddTimeSig = useCallback((ts) => {
+    recordHistory();
+    setState(s => ({ ...s, timeSignatures: [...s.timeSignatures, { id: `ts${Date.now()}`, ...ts }] }));
+  }, [recordHistory]);
+
+  const handleRemoveTimeSig = useCallback((id) => {
+    recordHistory();
+    setState(s => ({ ...s, timeSignatures: s.timeSignatures.filter(t => t.id !== id) }));
+  }, [recordHistory]);
+
+  const handleUpdateTimeSig = useCallback((id, updates) => {
+    recordHistory();
+    setState(s => ({ ...s, timeSignatures: s.timeSignatures.map(t => t.id === id ? { ...t, ...updates } : t) }));
+  }, [recordHistory]);
+
   const handleSelectPhrase = useCallback((i) => {
     setState(s => ({ ...s, selectedPhraseIndex: i, selectedTextRange: null }));
   }, []);
@@ -468,6 +485,7 @@ export default function App() {
           rehearsalMarkCounter: data.rehearsalMarkCounter ?? 0,
           structuralMarkers: data.structuralMarkers ?? [],
           annotations: data.annotations ?? [],
+          timeSignatures: data.timeSignatures ?? [],
         });
       } catch {
         alert('Could not read that file — make sure it is an Archform JSON export.');
@@ -511,8 +529,10 @@ export default function App() {
         shareCopied={shareCopied}
         onToggleSectionPanel={() => togglePanel('sections')}
         onToggleAnnotationPanel={() => togglePanel('annotations')}
+        onToggleTimeSigPanel={() => togglePanel('timeSigs')}
         sectionPanelOpen={state.activePanel === 'sections'}
         annotationPanelOpen={state.activePanel === 'annotations'}
+        timeSigPanelOpen={state.activePanel === 'timeSigs'}
         onQuickEntryChange={recordHistoryDebounced}
       />
 
@@ -524,6 +544,7 @@ export default function App() {
               title={state.title}
               composer={state.composer}
               structuralMarkers={state.structuralMarkers}
+              timeSignatures={state.timeSignatures}
               rehearsalMarks={state.rehearsalMarks}
               rehearsalMarkStyle={state.rehearsalMarkStyle}
               annotations={state.annotations}
@@ -578,6 +599,18 @@ export default function App() {
             onAddAnnotation={handleAddAnnotation}
             onRemoveAnnotation={handleRemoveAnnotation}
             onUpdateAnnotation={handleUpdateAnnotation}
+            onBarFieldFocus={handleBarFieldFocus}
+            pickedBar={state.pickedBar}
+          />
+        )}
+
+        {state.activePanel === 'timeSigs' && (
+          <TimeSignaturePanel
+            onClose={closePanel}
+            timeSignatures={state.timeSignatures}
+            onAdd={handleAddTimeSig}
+            onRemove={handleRemoveTimeSig}
+            onUpdate={handleUpdateTimeSig}
             onBarFieldFocus={handleBarFieldFocus}
             pickedBar={state.pickedBar}
           />

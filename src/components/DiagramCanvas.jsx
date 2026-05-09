@@ -123,7 +123,7 @@ function mainArchParams(x, width, slurY) {
 // A main phrase slur with center length label, ticks, and start bar number.
 // visualX: left edge of the arch (shifted left when there is an overlap).
 // x: nominal bar position (used for bar labels and rehearsal mark placement).
-function Slur({ x, visualX, width, slurY, startBar, length, isLastInRow, endBar, overlapPx, selected, editMode, hasMarkAtBar, onClick, onStartClick }) {
+function Slur({ x, visualX, width, slurY, startBar, length, isLastInRow, endBar, overlapPx, selected, editMode, hasMarkAtBar, hideBarNum, onClick, onStartClick }) {
   const hasOverlap = overlapPx > 0;
   const { x1, x2, cpY, cp1x, cp2x } = mainArchParams(visualX, width, slurY);
   const d = `M ${x1} ${slurY} C ${cp1x} ${cpY} ${cp2x} ${cpY} ${x2} ${slurY}`;
@@ -165,17 +165,19 @@ function Slur({ x, visualX, width, slurY, startBar, length, isLastInRow, endBar,
         {formatLength(length)}
       </text>
 
-      {/* Start bar number — at nominal position */}
-      <text
-        x={nx}
-        y={slurY + 17}
-        textAnchor="middle"
-        fontSize={9.5}
-        fontFamily="Georgia, 'Times New Roman', serif"
-        fill={selected ? '#2563eb' : '#999'}
-      >
-        {formatBar(startBar)}
-      </text>
+      {/* Start bar number — at nominal position (suppressed when a time sig is here) */}
+      {!hideBarNum && (
+        <text
+          x={nx}
+          y={slurY + 17}
+          textAnchor="middle"
+          fontSize={9.5}
+          fontFamily="Georgia, 'Times New Roman', serif"
+          fill={selected ? '#2563eb' : '#999'}
+        >
+          {formatBar(startBar)}
+        </text>
+      )}
 
       {/* End bar number at the right tick of the last phrase in a row */}
       {isLastInRow && (
@@ -327,11 +329,37 @@ function SectionMarker({ x1, x2, y, label, level, levelRank, isOpen, color }) {
   );
 }
 
+// Stacked time-signature numerals rendered on the phrase baseline.
+// atBoundary: true when positioned exactly at a phrase-start tick — a white rect
+// is drawn first to cover the overlapping tick marks at that junction.
+function TimeSig({ x, slurY, numerator, denominator, atBoundary }) {
+  const fs = 14;
+  const numStr = String(numerator);
+  const denStr = String(denominator);
+  const w = Math.max(numStr.length, denStr.length) * fs * 0.62 + 10;
+  return (
+    <g>
+      {atBoundary && (
+        <rect x={x - w / 2} y={slurY - 8} width={w} height={12} fill="white" />
+      )}
+      <text x={x} y={slurY - 3} textAnchor="middle" fontSize={fs}
+        fontFamily="Georgia, 'Times New Roman', serif" fontWeight="bold" fill="#1a1a1a">
+        {numStr}
+      </text>
+      <text x={x} y={slurY + fs - 2} textAnchor="middle" fontSize={fs}
+        fontFamily="Georgia, 'Times New Roman', serif" fontWeight="bold" fill="#1a1a1a">
+        {denStr}
+      </text>
+    </g>
+  );
+}
+
 export default function DiagramCanvas({
   layout,
   title,
   composer,
   structuralMarkers,
+  timeSignatures = [],
   rehearsalMarks,
   rehearsalMarkStyle,
   annotations,
@@ -353,6 +381,16 @@ export default function DiagramCanvas({
     rehearsalMarks.forEach(rm => m.set(rm.bar, rm));
     return m;
   }, [rehearsalMarks]);
+
+  // Set of bars that have a time signature — used to suppress bar number labels
+  const timeSigBarSet = useMemo(() => new Set(timeSignatures.map(ts => ts.bar)), [timeSignatures]);
+
+  // Set of all phrase start bars — used to determine boundary vs mid-phrase placement
+  const boundaryBars = useMemo(() => {
+    const s = new Set();
+    rows.forEach(row => row.phrases.forEach(p => s.add(p.startBar)));
+    return s;
+  }, [rows]);
 
   const getBarPos = bar => barToPosition(bar, rows);
 
@@ -475,6 +513,7 @@ export default function DiagramCanvas({
                   selected={phrase.phraseIndex === selectedPhraseIndex}
                   editMode={editMode}
                   hasMarkAtBar={hasMarkHere}
+                  hideBarNum={timeSigBarSet.has(phrase.startBar)}
                   onClick={() => onSelectPhrase(phrase.phraseIndex === selectedPhraseIndex ? null : phrase.phraseIndex)}
                   onStartClick={() => onSlurStartClick(phrase.startBar)}
                 />
@@ -525,6 +564,22 @@ export default function DiagramCanvas({
               text={ann.text}
               x={pos.x} y={pos.slurY + 30}
               fontSize={11} fill="#555" fontStyle="italic"
+            />
+          );
+        })}
+
+        {/* Time signatures — rendered on top so white rects cover tick marks at boundaries */}
+        {timeSignatures.map(ts => {
+          const pos = getBarPos(ts.bar);
+          if (!pos) return null;
+          return (
+            <TimeSig
+              key={ts.id}
+              x={pos.x}
+              slurY={pos.slurY}
+              numerator={ts.numerator}
+              denominator={ts.denominator}
+              atBoundary={boundaryBars.has(ts.bar)}
             />
           );
         })}

@@ -29,7 +29,7 @@ body {
   display: flex;
   flex-direction: column;
   height: 100%;
-  overflow: hidden;
+  overflow: clip;
 }
 
 .main-area {
@@ -760,6 +760,58 @@ body {
   font-weight: 400;
   color: #aaa;
   font-size: 11px;
+}
+
+/* ── Time signature panel ────────────────────────────────────── */
+
+.ts-quick-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 5px;
+  margin-bottom: 4px;
+}
+
+.ts-quick-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  padding: 5px 4px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: #fafaf8;
+  cursor: pointer;
+  line-height: 1.1;
+}
+
+.ts-quick-btn:hover { background: #f0eee9; }
+.ts-quick-btn.active { border-color: var(--accent); background: #eff6ff; }
+
+.ts-quick-num, .ts-quick-den {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-weight: bold;
+  font-size: 13px;
+  color: var(--text);
+  display: block;
+}
+
+.ts-list-glyph {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  line-height: 1.1;
+  flex-shrink: 0;
+}
+
+.ts-list-glyph span {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-weight: bold;
+  font-size: 11px;
+  color: var(--text);
+  display: block;
 }
 
 /* ── Overlap popover ─────────────────────────────────────────── */
