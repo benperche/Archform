@@ -334,19 +334,23 @@ function SectionMarker({ x1, x2, y, label, level, levelRank, isOpen, color }) {
 // is drawn first to cover the overlapping tick marks at that junction.
 function TimeSig({ x, slurY, numerator, denominator, atBoundary }) {
   const fs = 14;
+  const capH = Math.round(fs * 0.72); // ~10px — cap height of Georgia digits
   const numStr = String(numerator);
   const denStr = String(denominator);
   const w = Math.max(numStr.length, denStr.length) * fs * 0.62 + 10;
+  // Numerator sits above slurY (baseline = slurY, digits span slurY-capH to slurY)
+  // Denominator sits below (baseline = slurY+capH, digits span slurY to slurY+capH)
+  // → zero gap, centred on the phrase line
   return (
     <g>
       {atBoundary && (
-        <rect x={x - w / 2} y={slurY - 8} width={w} height={12} fill="white" />
+        <rect x={x - w / 2} y={slurY - 7} width={w} height={10} fill="white" />
       )}
-      <text x={x} y={slurY - 3} textAnchor="middle" fontSize={fs}
+      <text x={x} y={slurY} textAnchor="middle" fontSize={fs}
         fontFamily="Georgia, 'Times New Roman', serif" fontWeight="bold" fill="#1a1a1a">
         {numStr}
       </text>
-      <text x={x} y={slurY + fs - 2} textAnchor="middle" fontSize={fs}
+      <text x={x} y={slurY + capH} textAnchor="middle" fontSize={fs}
         fontFamily="Georgia, 'Times New Roman', serif" fontWeight="bold" fill="#1a1a1a">
         {denStr}
       </text>
