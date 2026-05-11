@@ -110,6 +110,7 @@ export default function HelpModal({ onClose }) {
         </div>
 
         <div className="help-footer">
+          <span className="help-credit">Designed by Ben Perche · Code by Claude.ai</span>
           <button className="btn btn-primary" onClick={onClose}>Got it</button>
         </div>
       </div>

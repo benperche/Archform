@@ -650,8 +650,15 @@ body {
   padding: 14px 24px;
   border-top: 1px solid var(--border);
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
+  justify-content: space-between;
   flex-shrink: 0;
+}
+
+.help-credit {
+  font-size: 11px;
+  color: #bbb;
+  font-style: italic;
 }
 
 /* ── File menu ───────────────────────────────────────────────── */
