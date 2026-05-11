@@ -94,7 +94,22 @@ export default function HelpModal({ onClose }) {
           </section>
 
           <section className="help-section">
-            <h3>5 — Managing files</h3>
+            <h3>5 — Add time signatures</h3>
+            <p>
+              Open the <strong>Time sigs</strong> panel from the toolbar.
+              Click a common time signature to select it, or enter a custom top and bottom number,
+              then specify a bar position (or click the diagram to pick one) and click
+              <em> Add time signature</em>.
+            </p>
+            <p>
+              Time signatures appear as stacked bold numerals on the phrase line.
+              When placed at a phrase boundary they sit between the two arches;
+              when placed mid-phrase they float on the line beneath the arch without interrupting it.
+            </p>
+          </section>
+
+          <section className="help-section">
+            <h3>6 — Managing files</h3>
             <p>
               Use the <strong>Files</strong> button (top left) to create new diagrams, switch between them,
               or delete ones you no longer need. File names are set automatically from the
