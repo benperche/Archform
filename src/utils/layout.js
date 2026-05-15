@@ -103,7 +103,7 @@ function rowTopPaddingForLevels(levelSet) {
   return n === 0 ? 0 : (n - 1) * 26 + 30;
 }
 
-export function computeLayout(phrases, lineBreakIndices, structuralMarkers = [], phraseOverlaps = {}) {
+export function computeLayout(phrases, lineBreakIndices, structuralMarkers = [], phraseOverlaps = {}, rowSpacing = {}) {
   if (!phrases.length) {
     return { rows: [], totalHeight: HEADER_HEIGHT + 60, CANVAS_WIDTH, HEADER_HEIGHT, PADDING };
   }
@@ -137,6 +137,11 @@ export function computeLayout(phrases, lineBreakIndices, structuralMarkers = [],
   let yOffset = HEADER_HEIGHT;
 
   const positionedRows = rows.map((row, rowIndex) => {
+    // Extra gap above this row (user-draggable; keyed by the first phrase's startBar)
+    const firstBar = row[0].startBar;
+    const extraGap = rowIndex > 0 ? (rowSpacing[firstBar] || 0) : 0;
+    yOffset += extraGap;
+
     const levelSet = rowLevelSets[rowIndex];
     const topPadding = rowTopPaddingForLevels(levelSet);
     const rowHeight = BASE_ROW_HEIGHT + topPadding;
@@ -186,7 +191,7 @@ export function computeLayout(phrases, lineBreakIndices, structuralMarkers = [],
       return { ...phrase, x: px, visualX, overlapPx, width, slurY, subPhrasePositions };
     });
 
-    return { phrases: positionedPhrases, rowY, slurY, rowIndex, rowEndX: x, rowHeight, levelSet };
+    return { phrases: positionedPhrases, rowY, slurY, rowIndex, rowEndX: x, rowHeight, levelSet, extraGap };
   });
 
   return {

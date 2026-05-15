@@ -936,6 +936,16 @@ body {
   background: #fee2e2;
 }
 
+/* ── Row spacing handles ─────────────────────────────────────── */
+
+/* Make the grip slightly more visible on hover (SVG :hover works in modern browsers) */
+svg g[style*="ns-resize"]:hover line {
+  stroke: #999;
+}
+svg g[style*="ns-resize"]:hover text {
+  fill: #999;
+}
+
 /* ── Print ───────────────────────────────────────────────────── */
 
 @media print {

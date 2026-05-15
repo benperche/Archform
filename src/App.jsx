@@ -44,6 +44,7 @@ const defaultDiagramState = {
   annotations: [],
   phraseOverlaps: {},
   timeSignatures: [],
+  rowSpacing: {},
 };
 
 const defaultTransient = {
@@ -222,8 +223,8 @@ export default function App() {
   );
 
   const layout = useMemo(
-    () => computeLayout(phrases, lineBreakIndices, state.structuralMarkers, state.phraseOverlaps),
-    [phrases, lineBreakIndices, state.structuralMarkers, state.phraseOverlaps]
+    () => computeLayout(phrases, lineBreakIndices, state.structuralMarkers, state.phraseOverlaps, state.rowSpacing),
+    [phrases, lineBreakIndices, state.structuralMarkers, state.phraseOverlaps, state.rowSpacing]
   );
 
   // Overlap popover position (fixed coordinates derived from SVG rect)
@@ -245,6 +246,14 @@ export default function App() {
       const next = { ...s.phraseOverlaps };
       if (!value) delete next[startBar]; else next[startBar] = value;
       return { ...s, phraseOverlaps: next };
+    });
+  }, []);
+
+  const handleRowSpacingChange = useCallback((firstBar, px) => {
+    setState(s => {
+      const next = { ...s.rowSpacing };
+      if (!px) delete next[firstBar]; else next[firstBar] = Math.round(px);
+      return { ...s, rowSpacing: next };
     });
   }, []);
 
@@ -486,6 +495,7 @@ export default function App() {
           structuralMarkers: data.structuralMarkers ?? [],
           annotations: data.annotations ?? [],
           timeSignatures: data.timeSignatures ?? [],
+          rowSpacing: data.rowSpacing ?? {},
         });
       } catch {
         alert('Could not read that file — make sure it is an Archform JSON export.');
@@ -552,6 +562,8 @@ export default function App() {
               editMode={state.editMode}
               barPickMode={barPickMode}
               svgRef={svgRef}
+              rowSpacing={state.rowSpacing}
+              onRowSpacingChange={handleRowSpacingChange}
               onSelectPhrase={handleSelectPhrase}
               onSubPhraseClick={handleSubPhraseClick}
               onSlurStartClick={handleSlurStartClick}

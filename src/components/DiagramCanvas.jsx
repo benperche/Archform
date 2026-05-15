@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect, useCallback } from 'react';
 
 // ── SVG note glyph system ─────────────────────────────────────
 // Parses text with note shorthand codes and renders inline SVG glyphs.
@@ -370,6 +370,8 @@ export default function DiagramCanvas({
   selectedPhraseIndex,
   editMode,
   barPickMode,
+  rowSpacing = {},
+  onRowSpacingChange,
   svgRef,
   onSelectPhrase,
   onSubPhraseClick,
@@ -379,6 +381,31 @@ export default function DiagramCanvas({
 }) {
   const { rows, totalHeight, HEADER_HEIGHT } = layout;
   const W = CANVAS_WIDTH;
+
+  // ── Row spacing drag ─────────────────────────────────────────
+  const [dragging, setDragging] = useState(null);
+  // dragging = { firstBar, startClientY, startExtra }
+
+  const startSpacingDrag = useCallback((e, firstBar, currentExtra) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragging({ firstBar, startClientY: e.clientY, startExtra: currentExtra });
+  }, []);
+
+  useEffect(() => {
+    if (!dragging) return;
+    const onMove = e => {
+      const dy = e.clientY - dragging.startClientY;
+      const rect = svgRef.current?.getBoundingClientRect();
+      const scale = rect ? rect.width / CANVAS_WIDTH : 1;
+      const newExtra = Math.max(0, Math.min(300, dragging.startExtra + dy / scale));
+      onRowSpacingChange?.(dragging.firstBar, newExtra);
+    };
+    const onUp = () => setDragging(null);
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    return () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
+  }, [dragging, onRowSpacingChange, svgRef]);
 
   const marksByBar = useMemo(() => {
     const m = new Map();
@@ -550,7 +577,7 @@ export default function DiagramCanvas({
             <RehearsalMark
               key={mark.id}
               x={pos.x}
-              y={pos.slurY - 30}
+              y={pos.slurY - 34}
               label={mark.label}
               markStyle={rehearsalMarkStyle}
               onClick={() => onRemoveRehearsalMark(mark.id)}
@@ -585,6 +612,52 @@ export default function DiagramCanvas({
               denominator={ts.denominator}
               atBoundary={boundaryBars.has(ts.bar)}
             />
+          );
+        })}
+
+        {/* Row spacing drag handles — live in the left PADDING zone (x 0..PADDING) */}
+        {rows.slice(1).map(row => {
+          const firstBar = row.phrases[0].startBar;
+          const extra = row.extraGap || 0;
+          // Handle sits at the top of the gap (= natural bottom of previous row)
+          const gripY = row.rowY - extra;
+          const active = dragging?.firstBar === firstBar;
+          return (
+            <g
+              key={`spacing-${firstBar}`}
+              style={{ cursor: 'ns-resize' }}
+              onMouseDown={e => startSpacingDrag(e, firstBar, extra)}
+            >
+              {/* Larger invisible hit target */}
+              <rect x={0} y={gripY - 8} width={PADDING - 4} height={16} fill="transparent" />
+              {/* Grip line */}
+              <line
+                x1={6} y1={gripY} x2={PADDING - 6} y2={gripY}
+                stroke={active ? '#2563eb' : '#ccc'}
+                strokeWidth={active ? 1.5 : 1}
+                strokeDasharray="4,3"
+              />
+              {/* ↕ icon centred on the grip */}
+              <text
+                x={PADDING / 2} y={gripY + 4}
+                textAnchor="middle" fontSize={8}
+                fill={active ? '#2563eb' : '#ccc'}
+                style={{ userSelect: 'none', pointerEvents: 'none' }}
+              >
+                ↕
+              </text>
+              {/* Gap size label — only shown when non-zero */}
+              {extra > 0 && (
+                <text
+                  x={PADDING / 2} y={gripY + extra / 2 + 4}
+                  textAnchor="middle" fontSize={7.5}
+                  fill="#bbb"
+                  style={{ userSelect: 'none', pointerEvents: 'none' }}
+                >
+                  {Math.round(extra)}px
+                </text>
+              )}
+            </g>
           );
         })}
 
