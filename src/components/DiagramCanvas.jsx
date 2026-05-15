@@ -283,7 +283,7 @@ function RehearsalMark({ x, y, label, markStyle, onClick }) {
       <text
         x={x} y={y}
         textAnchor="middle"
-        dominantBaseline="central"
+        dy="0.35em"
         fontSize={fs}
         fontFamily="Georgia, 'Times New Roman', serif"
         fontWeight="bold"
