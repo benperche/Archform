@@ -57,11 +57,22 @@ export default function FermataPanel({
   onBarFieldFocus,
   pickedBar,
   layoutRows = [],
+  requestEditId,
+  onEditChange,
 }) {
   const [bar, setBar] = useState('');
   const [editingId, setEditingId] = useState(null);
   const [editBar, setEditBar] = useState('');
   const focusedField = useRef(null);
+
+  // Open editor when canvas click targets a specific item
+  useEffect(() => {
+    if (!requestEditId) return;
+    const item = fermatas.find(f => f.id === requestEditId);
+    if (item) { setEditingId(item.id); setEditBar(String(item.bar)); }
+  }, [requestEditId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => { onEditChange?.(editingId); }, [editingId, onEditChange]);
 
   useEffect(() => {
     if (!pickedBar) return;

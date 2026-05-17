@@ -67,12 +67,23 @@ export default function RepeatsPanel({
   onBarFieldFocus,
   pickedBar,
   layoutRows = [],
+  requestEditId,
+  onEditChange,
 }) {
   const [bar, setBar] = useState('');
   const [type, setType] = useState('start');
   const [editingId, setEditingId] = useState(null);
   const [editFields, setEditFields] = useState({});
   const focusedField = useRef(null);
+
+  // Open editor when canvas click targets a specific item
+  useEffect(() => {
+    if (!requestEditId) return;
+    const item = repeats.find(r => r.id === requestEditId);
+    if (item) { setEditingId(item.id); setEditFields({ bar: String(item.bar), type: item.type }); }
+  }, [requestEditId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => { onEditChange?.(editingId); }, [editingId, onEditChange]);
 
   useEffect(() => {
     if (!pickedBar) return;

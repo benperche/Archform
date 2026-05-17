@@ -28,6 +28,8 @@ export default function TimeSignaturePanel({
   onBarFieldFocus,
   pickedBar,
   layoutRows = [],
+  requestEditId,
+  onEditChange,
 }) {
   const [num, setNum] = useState('4');
   const [den, setDen] = useState('4');
@@ -37,6 +39,18 @@ export default function TimeSignaturePanel({
   const [editFields, setEditFields] = useState({});
 
   const focusedField = useRef(null);
+
+  // Open editor when canvas click targets a specific item
+  useEffect(() => {
+    if (!requestEditId) return;
+    const item = timeSignatures.find(t => t.id === requestEditId);
+    if (item) {
+      setEditingId(item.id);
+      setEditFields({ num: String(item.numerator), den: String(item.denominator), bar: String(item.bar) });
+    }
+  }, [requestEditId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => { onEditChange?.(editingId); }, [editingId, onEditChange]);
 
   useEffect(() => {
     if (!pickedBar) return;

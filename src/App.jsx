@@ -62,6 +62,9 @@ const defaultTransient = {
   pickedBar: null,
   activeLabelId: null,
   activeSectionId: null,
+  activeRepeatId: null,
+  activeFermataId: null,
+  activeTimeSigId: null,
   prefillLabelBar: null,
   prefillSectionBar: null,
 };
@@ -71,7 +74,8 @@ const defaultState = { ...defaultDiagramState, ...defaultTransient };
 function getDiagramSnapshot(s) {
   // eslint-disable-next-line no-unused-vars
   const { selectedPhraseIndex, selectedTextRange, editMode, activePanel, barPickField, pickedBar,
-          activeLabelId, activeSectionId, prefillLabelBar, prefillSectionBar, ...data } = s;
+          activeLabelId, activeSectionId, activeRepeatId, activeFermataId, activeTimeSigId,
+          prefillLabelBar, prefillSectionBar, ...data } = s;
   return data;
 }
 
@@ -311,6 +315,34 @@ export default function App() {
 
   const handleSectionEditChange = useCallback((id) => {
     setState(s => ({ ...s, activeSectionId: id ?? null }));
+  }, []);
+
+  const handleRepeatCanvasClick = useCallback((id) => {
+    setState(s => ({ ...s, activePanel: 'repeats', activeRepeatId: id, barPickField: null, pickedBar: null }));
+  }, []);
+
+  const handleFermataCanvasClick = useCallback((id) => {
+    setState(s => ({ ...s, activePanel: 'fermatas', activeFermataId: id, barPickField: null, pickedBar: null }));
+  }, []);
+
+  const handleTimeSigCanvasClick = useCallback((id) => {
+    setState(s => ({ ...s, activePanel: 'timeSigs', activeTimeSigId: id, barPickField: null, pickedBar: null }));
+  }, []);
+
+  const handleRepeatEditChange = useCallback((id) => {
+    setState(s => ({ ...s, activeRepeatId: id ?? null }));
+  }, []);
+
+  const handleFermataEditChange = useCallback((id) => {
+    setState(s => ({ ...s, activeFermataId: id ?? null }));
+  }, []);
+
+  const handleTimeSigEditChange = useCallback((id) => {
+    setState(s => ({ ...s, activeTimeSigId: id ?? null }));
+  }, []);
+
+  const handleRehearsalMarkPanelOpen = useCallback(() => {
+    setState(s => ({ ...s, activePanel: 'rehearsalMarks', selectedPhraseIndex: null }));
   }, []);
 
   const handleAddLabelHere = useCallback((bar) => {
@@ -779,11 +811,18 @@ export default function App() {
               onSubPhraseClick={handleSubPhraseClick}
               onSlurStartClick={handleSlurStartClick}
               onRemoveRehearsalMark={handleRemoveRehearsalMark}
+              onRehearsalMarkPanelOpen={handleRehearsalMarkPanelOpen}
               onBarPick={handleBarPick}
               activeLabelId={state.activeLabelId}
               activeSectionId={state.activeSectionId}
+              activeRepeatId={state.activeRepeatId}
+              activeFermataId={state.activeFermataId}
+              activeTimeSigId={state.activeTimeSigId}
               onLabelClick={handleLabelCanvasClick}
               onSectionClick={handleSectionCanvasClick}
+              onRepeatClick={handleRepeatCanvasClick}
+              onFermataClick={handleFermataCanvasClick}
+              onTimeSigClick={handleTimeSigCanvasClick}
             />
             {state.selectedPhraseIndex != null && overlapPopoverPos && !state.editMode && (
               <OverlapPopover
@@ -879,6 +918,8 @@ export default function App() {
             onBarFieldFocus={handleBarFieldFocus}
             pickedBar={state.pickedBar}
             layoutRows={layout.rows}
+            requestEditId={state.activeTimeSigId}
+            onEditChange={handleTimeSigEditChange}
           />
         )}
 
@@ -892,6 +933,8 @@ export default function App() {
             onBarFieldFocus={handleBarFieldFocus}
             pickedBar={state.pickedBar}
             layoutRows={layout.rows}
+            requestEditId={state.activeRepeatId}
+            onEditChange={handleRepeatEditChange}
           />
         )}
 
@@ -905,6 +948,8 @@ export default function App() {
             onBarFieldFocus={handleBarFieldFocus}
             pickedBar={state.pickedBar}
             layoutRows={layout.rows}
+            requestEditId={state.activeFermataId}
+            onEditChange={handleFermataEditChange}
           />
         )}
       </div>

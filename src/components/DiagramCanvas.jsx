@@ -281,28 +281,92 @@ function SectionMarker({ x1, x2, y, label, level, levelRank, isOpen, color, isAc
 // Stacked time-signature numerals rendered on the phrase baseline.
 // atBoundary: true when positioned exactly at a phrase-start tick — a white rect
 // is drawn first to cover the overlapping tick marks at that junction.
-function TimeSig({ x, slurY, numerator, denominator, atBoundary }) {
+function TimeSig({ x, slurY, numerator, denominator, atBoundary, isActive, onClick }) {
+  const [hovered, setHovered] = useState(false);
   const fs = 14;
-  const capH = Math.round(fs * 0.72); // ~10px — cap height of Georgia digits
+  const capH = Math.round(fs * 0.72);
   const numStr = String(numerator);
   const denStr = String(denominator);
   const w = Math.max(numStr.length, denStr.length) * fs * 0.62 + 10;
-  // Numerator sits above slurY (baseline = slurY, digits span slurY-capH to slurY)
-  // Denominator sits below (baseline = slurY+capH, digits span slurY to slurY+capH)
-  // → zero gap, centred on the phrase line
+  const col = isActive ? '#2563eb' : (hovered && onClick ? '#4878cf' : '#1a1a1a');
   return (
-    <g>
+    <g
+      style={onClick ? { cursor: 'pointer' } : undefined}
+      onClick={onClick}
+      onMouseEnter={onClick ? () => setHovered(true) : undefined}
+      onMouseLeave={onClick ? () => setHovered(false) : undefined}
+    >
+      {onClick && (
+        <rect x={x - w / 2 - 4} y={slurY - capH - 6} width={w + 8} height={capH * 2 + 12} fill="transparent" />
+      )}
       {atBoundary && (
         <rect x={x - w / 2} y={slurY - 7} width={w} height={10} fill="white" />
       )}
       <text x={x} y={slurY} textAnchor="middle" fontSize={fs}
-        fontFamily="Georgia, 'Times New Roman', serif" fontWeight="bold" fill="#1a1a1a">
+        fontFamily="Georgia, 'Times New Roman', serif" fontWeight="bold" fill={col}>
         {numStr}
       </text>
       <text x={x} y={slurY + capH} textAnchor="middle" fontSize={fs}
-        fontFamily="Georgia, 'Times New Roman', serif" fontWeight="bold" fill="#1a1a1a">
+        fontFamily="Georgia, 'Times New Roman', serif" fontWeight="bold" fill={col}>
         {denStr}
       </text>
+    </g>
+  );
+}
+
+// Repeat / final barline, clickable when onClick is provided.
+function RepeatBarlineItem({ rp, x, slurY, isActive, onClick }) {
+  const [hovered, setHovered] = useState(false);
+  const top = slurY - 28;
+  const bot = slurY + 10;
+  const h = bot - top;
+  const f = isActive ? '#2563eb' : (hovered && onClick ? '#4878cf' : '#1a1a1a');
+  const sep = 4;
+  return (
+    <g
+      style={onClick ? { cursor: 'pointer' } : undefined}
+      onClick={onClick}
+      onMouseEnter={onClick ? () => setHovered(true) : undefined}
+      onMouseLeave={onClick ? () => setHovered(false) : undefined}
+    >
+      {/* Wide transparent hit area */}
+      <rect x={x - 12} y={top - 4} width={24} height={h + 8} fill="transparent" />
+      {rp.type === 'start' && <>
+        <line x1={x}       y1={top} x2={x}       y2={bot} stroke={f} strokeWidth={3.5} />
+        <line x1={x + sep} y1={top} x2={x + sep} y2={bot} stroke={f} strokeWidth={1} />
+        <circle cx={x + sep + 5.5} cy={top + h * 0.35} r={1.8} fill={f} />
+        <circle cx={x + sep + 5.5} cy={top + h * 0.65} r={1.8} fill={f} />
+      </>}
+      {rp.type === 'end' && <>
+        <circle cx={x - sep - 5.5} cy={top + h * 0.35} r={1.8} fill={f} />
+        <circle cx={x - sep - 5.5} cy={top + h * 0.65} r={1.8} fill={f} />
+        <line x1={x - sep} y1={top} x2={x - sep} y2={bot} stroke={f} strokeWidth={1} />
+        <line x1={x}       y1={top} x2={x}       y2={bot} stroke={f} strokeWidth={3.5} />
+      </>}
+      {rp.type === 'final' && <>
+        <line x1={x - sep / 2} y1={top} x2={x - sep / 2} y2={bot} stroke={f} strokeWidth={1} />
+        <line x1={x + sep / 2} y1={top} x2={x + sep / 2} y2={bot} stroke={f} strokeWidth={3.5} />
+      </>}
+    </g>
+  );
+}
+
+// Fermata pause symbol above a slur arc, clickable when onClick is provided.
+function FermataGlyph({ fm, cx, cy, isActive, onClick }) {
+  const [hovered, setHovered] = useState(false);
+  const r = 7;
+  const f = isActive ? '#2563eb' : (hovered && onClick ? '#4878cf' : '#1a1a1a');
+  return (
+    <g
+      style={onClick ? { cursor: 'pointer' } : undefined}
+      onClick={onClick}
+      onMouseEnter={onClick ? () => setHovered(true) : undefined}
+      onMouseLeave={onClick ? () => setHovered(false) : undefined}
+    >
+      <rect x={cx - r - 4} y={cy - r - 4} width={(r + 4) * 2} height={r + 10} fill="transparent" />
+      <path d={`M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${cx + r} ${cy}`}
+        stroke={f} strokeWidth={1.2} fill="none" />
+      <circle cx={cx} cy={cy} r={1.8} fill={f} />
     </g>
   );
 }
@@ -350,11 +414,18 @@ export default function DiagramCanvas({
   onSubPhraseClick,
   onSlurStartClick,
   onRemoveRehearsalMark,
+  onRehearsalMarkPanelOpen,
   onBarPick,
   activeLabelId,
   activeSectionId,
+  activeRepeatId,
+  activeFermataId,
+  activeTimeSigId,
   onLabelClick,
   onSectionClick,
+  onRepeatClick,
+  onFermataClick,
+  onTimeSigClick,
 }) {
   const { rows, totalHeight, HEADER_HEIGHT } = layout;
   const W = CANVAS_WIDTH;
@@ -564,6 +635,7 @@ export default function DiagramCanvas({
         {rehearsalMarks.map(mark => {
           const pos = getBarPos(mark.bar);
           if (!pos) return null;
+          const inMarkMode = editMode === 'rehearsalMarks';
           return (
             <RehearsalMark
               key={mark.id}
@@ -571,7 +643,9 @@ export default function DiagramCanvas({
               y={pos.slurY - 46}
               label={mark.label}
               markStyle={rehearsalMarkStyle}
-              onClick={() => onRemoveRehearsalMark(mark.id)}
+              onClick={inMarkMode
+                ? () => onRemoveRehearsalMark(mark.id)
+                : () => onRehearsalMarkPanelOpen?.()}
             />
           );
         })}
@@ -596,6 +670,7 @@ export default function DiagramCanvas({
         {timeSignatures.map(ts => {
           const pos = getBarPos(ts.bar);
           if (!pos) return null;
+          const clickable = !barPickMode && !editMode && !!onTimeSigClick;
           return (
             <TimeSig
               key={ts.id}
@@ -604,6 +679,8 @@ export default function DiagramCanvas({
               numerator={ts.numerator}
               denominator={ts.denominator}
               atBoundary={boundaryBars.has(ts.bar)}
+              isActive={ts.id === activeTimeSigId}
+              onClick={clickable ? (e) => { e.stopPropagation(); onTimeSigClick(ts.id); } : undefined}
             />
           );
         })}
@@ -612,42 +689,16 @@ export default function DiagramCanvas({
         {repeats.map(rp => {
           const pos = getBarPos(rp.bar);
           if (!pos) return null;
-          const x = pos.x;
-          const top = pos.slurY - 28;
-          const bot = pos.slurY + 10;
-          const h = bot - top;
-          const f = '#1a1a1a';
-          // Gap between line centres: thick line is 3.5px wide (half = 1.75),
-          // thin is 1px (half = 0.5). To get ~1.5px visible gap: 1.75 + 1.5 + 0.5 = 3.75 → use 4px.
-          const sep = 4;
-          if (rp.type === 'start') {
-            // ||:  →  thick | thin  ··  (thick on the outside/left)
-            return (
-              <g key={rp.id}>
-                <line x1={x}       y1={top} x2={x}       y2={bot} stroke={f} strokeWidth={3.5} />
-                <line x1={x + sep} y1={top} x2={x + sep} y2={bot} stroke={f} strokeWidth={1} />
-                <circle cx={x + sep + 5.5} cy={top + h * 0.35} r={1.8} fill={f} />
-                <circle cx={x + sep + 5.5} cy={top + h * 0.65} r={1.8} fill={f} />
-              </g>
-            );
-          }
-          if (rp.type === 'end') {
-            // :||  →  ··  thin | thick  (thick on the outside/right)
-            return (
-              <g key={rp.id}>
-                <circle cx={x - sep - 5.5} cy={top + h * 0.35} r={1.8} fill={f} />
-                <circle cx={x - sep - 5.5} cy={top + h * 0.65} r={1.8} fill={f} />
-                <line x1={x - sep} y1={top} x2={x - sep} y2={bot} stroke={f} strokeWidth={1} />
-                <line x1={x}       y1={top} x2={x}       y2={bot} stroke={f} strokeWidth={3.5} />
-              </g>
-            );
-          }
-          // final barline: thin | thick (thick on the outside/right)
+          const clickable = !barPickMode && !editMode && !!onRepeatClick;
           return (
-            <g key={rp.id}>
-              <line x1={x - sep / 2} y1={top} x2={x - sep / 2} y2={bot} stroke={f} strokeWidth={1} />
-              <line x1={x + sep / 2} y1={top} x2={x + sep / 2} y2={bot} stroke={f} strokeWidth={3.5} />
-            </g>
+            <RepeatBarlineItem
+              key={rp.id}
+              rp={rp}
+              x={pos.x}
+              slurY={pos.slurY}
+              isActive={rp.id === activeRepeatId}
+              onClick={clickable ? (e) => { e.stopPropagation(); onRepeatClick(rp.id); } : undefined}
+            />
           );
         })}
 
@@ -655,20 +706,16 @@ export default function DiagramCanvas({
         {fermatas.map(fm => {
           const pos = getBarPos(fm.bar);
           if (!pos) return null;
-          const cx = pos.x;
-          const cy = pos.slurY - 36;  // baseline of the fermata (dot sits here)
-          const r = 7;
-          const f = '#1a1a1a';
+          const clickable = !barPickMode && !editMode && !!onFermataClick;
           return (
-            <g key={fm.id}>
-              {/* Dome arc: sweep=1 (CW in SVG screen coords) goes upward from left to right endpoint */}
-              <path
-                d={`M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${cx + r} ${cy}`}
-                stroke={f} strokeWidth={1.2} fill="none"
-              />
-              {/* Dot centred on the baseline — level with the arc endpoints */}
-              <circle cx={cx} cy={cy} r={1.8} fill={f} />
-            </g>
+            <FermataGlyph
+              key={fm.id}
+              fm={fm}
+              cx={pos.x}
+              cy={pos.slurY - 36}
+              isActive={fm.id === activeFermataId}
+              onClick={clickable ? (e) => { e.stopPropagation(); onFermataClick(fm.id); } : undefined}
+            />
           );
         })}
 
