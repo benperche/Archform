@@ -37,22 +37,22 @@ function NoteGlyph({ type, fill: f = '#1a1a1a' }) {
   const bm = (n, yOff = 0) =>
     <rect x={STX} y={ST_TOP + yOff} width={SP * (n - 1)} height={BM_H} fill={f} />;
 
-  // Triplet bracket: open square bracket with "3" in the centre, sitting below the noteheads
-  // (standard placement for stems-up notation)
+  // Triplet bracket: below the noteheads, ticks pointing up toward the notes,
+  // spanning from the outer edges of the first and last noteheads.
   const trip3 = () => {
-    const lx = STX - NH_RX * 0.6;      // align roughly with left notehead edge
-    const rx = STX + SP * 2 + NH_RX;   // align roughly with right notehead edge
+    const lx = OX - NH_RX - 0.5;           // left edge of first notehead
+    const rx = OX + NH_RX + SP * 2 + 0.5;  // right edge of last notehead
     const cx = (lx + rx) / 2;
-    const by = OY + NH_RY + 1.5;       // just below notehead bottom
-    const ty = by + 5;                  // "3" numeral below the bracket
-    const tick = 3;                     // vertical tick length (pointing down)
-    const gap = 2.5;                    // half-gap around the numeral
+    const by = OY + NH_RY + 1.5;           // just below notehead bottom
+    const ty = by + 5;                      // "3" numeral below the bracket
+    const tick = 3;                         // tick length, pointing up (by - tick)
+    const gap = 2.5;                        // half-gap around the numeral
     return (
       <g>
         <line x1={lx}       y1={by} x2={cx - gap} y2={by} stroke={f} strokeWidth={0.7} />
-        <line x1={lx}       y1={by} x2={lx}       y2={by + tick} stroke={f} strokeWidth={0.7} />
+        <line x1={lx}       y1={by} x2={lx}       y2={by - tick} stroke={f} strokeWidth={0.7} />
         <line x1={rx}       y1={by} x2={cx + gap} y2={by} stroke={f} strokeWidth={0.7} />
-        <line x1={rx}       y1={by} x2={rx}       y2={by + tick} stroke={f} strokeWidth={0.7} />
+        <line x1={rx}       y1={by} x2={rx}       y2={by - tick} stroke={f} strokeWidth={0.7} />
         <text x={cx} y={ty} fontSize={5} textAnchor="middle"
           fontFamily="Georgia, 'Times New Roman', serif" fill={f}>3</text>
       </g>
@@ -624,7 +624,7 @@ export default function DiagramCanvas({
             <NoteText
               key={ann.id}
               text={ann.text}
-              x={pos.x} y={pos.slurY + 32}
+              x={pos.x} y={pos.slurY + 33}
               fontSize={11} fill="#555" fontStyle="italic"
             />
           );
