@@ -32,7 +32,7 @@ export default function RehearsalMarksPanel({
       <div className="reh-marks-top">
         <div className="reh-marks-title-row">
           <span className="reh-marks-title">Rehearsal marks</span>
-          <span className="reh-marks-hint">Click a slur's start on the diagram to place or remove a mark</span>
+          <span className="reh-marks-hint">Click a slur's start on the diagram to place or remove a mark, or use the text box to place a marking at an arbitrary bar position</span>
           <button className="panel-close" onClick={onClose}>✕</button>
         </div>
 
