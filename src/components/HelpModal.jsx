@@ -1,4 +1,4 @@
-import { NoteGlyphPreview, FermataPreview } from './NoteGlyphs';
+import { NoteGlyphPreview, FermataPreview, CaesuraPreview } from './NoteGlyphs';
 
 export default function HelpModal({ onClose }) {
   return (
@@ -140,11 +140,17 @@ export default function HelpModal({ onClose }) {
           </section>
 
           <section className="help-section">
-            <h3>7 — Add fermatas</h3>
+            <h3>7 — Add fermatas &amp; caesuras</h3>
             <p>
-              Click <strong>Fermatas</strong> to place a pause symbol (<FermataPreview />) above the slur arc
-              at any bar position. Click a fermata on the diagram to edit or remove it.
+              Click <strong>Fermatas</strong> to place a pause marking above the slur arc at any bar
+              position. Two types are available:
             </p>
+            <ul>
+              <li><FermataPreview /> <strong>Fermata</strong> — the classic arc-and-dot pause symbol.</li>
+              <li><CaesuraPreview /> <strong>Caesura</strong> — two diagonal lines (//) indicating a
+              brief break or breath mark.</li>
+            </ul>
+            <p>Click a fermata or caesura on the diagram to edit or remove it.</p>
           </section>
 
           <section className="help-section">

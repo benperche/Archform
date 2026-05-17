@@ -135,6 +135,23 @@ export function FermataPreview() {
   );
 }
 
+// Standalone preview SVG of a caesura — used in help modal.
+// Matches the two forward-slash lines drawn by FermataGlyph in DiagramCanvas.
+export function CaesuraPreview() {
+  const cx = 11, cy = 9, slashH = 11, slashDx = 2.5, gap = 5;
+  return (
+    <svg width={22} height={18} viewBox="0 0 22 18"
+      style={{ display: 'inline-block', verticalAlign: 'middle' }}>
+      <line x1={cx - gap / 2 - slashDx} y1={cy + slashH / 2}
+            x2={cx - gap / 2 + slashDx} y2={cy - slashH / 2}
+            stroke="#1a1a1a" strokeWidth={1.5} strokeLinecap="round" />
+      <line x1={cx + gap / 2 - slashDx} y1={cy + slashH / 2}
+            x2={cx + gap / 2 + slashDx} y2={cy - slashH / 2}
+            stroke="#1a1a1a" strokeWidth={1.5} strokeLinecap="round" />
+    </svg>
+  );
+}
+
 // Standalone preview SVG for a single note type — used in help modal.
 // height/width chosen to comfortably contain the tallest glyph.
 export function NoteGlyphPreview({ type }) {

@@ -355,11 +355,19 @@ function RepeatBarlineItem({ rp, x, slurY, isActive, onClick }) {
   );
 }
 
-// Fermata pause symbol above a slur arc, clickable when onClick is provided.
+// Fermata or caesura symbol above a slur arc, clickable when onClick is provided.
+// fm.type === 'caesura' renders two parallel forward-slash lines (train tracks).
+// Defaults to fermata (arc + dot) when type is absent (backward compatibility).
 function FermataGlyph({ fm, cx, cy, isActive, onClick }) {
   const [hovered, setHovered] = useState(false);
-  const r = 7;
   const f = isActive ? '#2563eb' : (hovered && onClick ? '#4878cf' : '#1a1a1a');
+  const isCaesura = fm.type === 'caesura';
+
+  // Fermata geometry
+  const r = 7;
+  // Caesura geometry: two forward-slash lines, each tilted ~25° from vertical
+  const slashH = 11, slashDx = 2.5, gap = 5;
+
   return (
     <g
       style={onClick ? { cursor: 'pointer' } : undefined}
@@ -367,10 +375,21 @@ function FermataGlyph({ fm, cx, cy, isActive, onClick }) {
       onMouseEnter={onClick ? () => setHovered(true) : undefined}
       onMouseLeave={onClick ? () => setHovered(false) : undefined}
     >
-      <rect x={cx - r - 4} y={cy - r - 4} width={(r + 4) * 2} height={r + 10} fill="transparent" />
-      <path d={`M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${cx + r} ${cy}`}
-        stroke={f} strokeWidth={1.2} fill="none" />
-      <circle cx={cx} cy={cy} r={1.8} fill={f} />
+      {isCaesura ? (<>
+        <rect x={cx - gap - slashDx - 4} y={cy - slashH / 2 - 4}
+          width={gap * 2 + slashDx * 2 + 8} height={slashH + 8} fill="transparent" />
+        <line x1={cx - gap / 2 - slashDx} y1={cy + slashH / 2}
+              x2={cx - gap / 2 + slashDx} y2={cy - slashH / 2}
+              stroke={f} strokeWidth={1.5} strokeLinecap="round" />
+        <line x1={cx + gap / 2 - slashDx} y1={cy + slashH / 2}
+              x2={cx + gap / 2 + slashDx} y2={cy - slashH / 2}
+              stroke={f} strokeWidth={1.5} strokeLinecap="round" />
+      </>) : (<>
+        <rect x={cx - r - 4} y={cy - r - 4} width={(r + 4) * 2} height={r + 10} fill="transparent" />
+        <path d={`M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${cx + r} ${cy}`}
+          stroke={f} strokeWidth={1.2} fill="none" />
+        <circle cx={cx} cy={cy} r={1.8} fill={f} />
+      </>)}
     </g>
   );
 }
