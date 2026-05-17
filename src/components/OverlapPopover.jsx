@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 
-export default function OverlapPopover({ startBar, value, position, onClose, onChange }) {
+export default function OverlapPopover({ startBar, value, position, onClose, onChange, onAddAnnotationHere, onAddSectionHere }) {
   const [input, setInput] = useState(String(value || 0));
   const inputRef = useRef();
 
@@ -69,6 +69,14 @@ export default function OverlapPopover({ startBar, value, position, onClose, onC
             Remove overlap
           </button>
         )}
+        <div className="overlap-add-actions">
+          <button className="overlap-add-btn" onClick={() => { onAddAnnotationHere?.(startBar); onClose(); }}>
+            + Add annotation here
+          </button>
+          <button className="overlap-add-btn" onClick={() => { onAddSectionHere?.(startBar); onClose(); }}>
+            + Add section here
+          </button>
+        </div>
       </div>
     </>
   );

@@ -329,17 +329,26 @@ function RehearsalMark({ x, y, label, markStyle, onClick }) {
 // Structural section marker with optional open end.
 // levelRank: 0 = innermost (closest to slur), higher = further away.
 // isBroad: true when the absolute level value is 0 (bold/thick styling).
-function SectionMarker({ x1, x2, y, label, level, levelRank, isOpen, color }) {
+function SectionMarker({ x1, x2, y, label, level, levelRank, isOpen, color, isActive, onClick }) {
   const isBroad = level === 0;
   const levelOffset = levelRank * 26;
   const lineY = y - (MAIN_MAX_ARCH + 14) - levelOffset;
   const labelX = isOpen ? x1 + 6 : (x1 + x2) / 2;
   const labelAnchor = isOpen ? 'start' : 'middle';
   const sw = isBroad ? 1.5 : 0.9;
-  const col = color || '#1a1a1a';
+  const col = isActive ? '#2563eb' : (color || '#1a1a1a');
 
   return (
-    <g>
+    <g style={onClick ? { cursor: 'pointer' } : undefined} onClick={onClick}>
+      {/* Wide transparent hit area along the bracket line */}
+      {onClick && (
+        <rect
+          x={x1 - 4} y={lineY - 10}
+          width={isOpen ? 94 : Math.max((x2 - x1) + 8, 20)}
+          height={22}
+          fill="transparent"
+        />
+      )}
       <line x1={x1} y1={lineY} x2={isOpen ? x1 + 30 : x2} y2={lineY} stroke={col} strokeWidth={sw} />
       {isOpen && (
         <line x1={x1 + 30} y1={lineY} x2={x1 + 90} y2={lineY}
@@ -409,6 +418,10 @@ export default function DiagramCanvas({
   onSlurStartClick,
   onRemoveRehearsalMark,
   onBarPick,
+  activeAnnotationId,
+  activeSectionId,
+  onAnnotationClick,
+  onSectionClick,
 }) {
   const { rows, totalHeight, HEADER_HEIGHT } = layout;
   const W = CANVAS_WIDTH;
@@ -517,6 +530,11 @@ export default function DiagramCanvas({
           const levelIdx = sortedLevels.indexOf(markerLevel);
           const levelRank = levelSet.size - 1 - (levelIdx >= 0 ? levelIdx : 0);
 
+          const sectionIsActive = marker.id === activeSectionId;
+          const sectionClickHandler = (!barPickMode && !editMode && onSectionClick)
+            ? (e) => { e.stopPropagation(); onSectionClick(marker.id); }
+            : undefined;
+
           // No end bar, or same row as start: standard rendering
           if (!endPos || endPos.rowIndex === startPos.rowIndex) {
             return (
@@ -530,6 +548,8 @@ export default function DiagramCanvas({
                 levelRank={levelRank}
                 isOpen={!endPos}
                 color={marker.color}
+                isActive={sectionIsActive}
+                onClick={sectionClickHandler}
               />
             );
           }
@@ -550,6 +570,8 @@ export default function DiagramCanvas({
               levelRank={levelRank}
               isOpen={!endsAtRowEdge}
               color={marker.color}
+              isActive={sectionIsActive}
+              onClick={sectionClickHandler}
             />
           );
         })}
@@ -620,13 +642,20 @@ export default function DiagramCanvas({
         {annotations.map(ann => {
           const pos = getBarPos(ann.bar);
           if (!pos) return null;
+          const isActive = ann.id === activeAnnotationId;
+          const clickable = !barPickMode && !editMode && !!onAnnotationClick;
           return (
-            <NoteText
+            <g
               key={ann.id}
-              text={ann.text}
-              x={pos.x} y={pos.slurY + 33}
-              fontSize={11} fill="#555" fontStyle="italic"
-            />
+              style={clickable ? { cursor: 'pointer' } : undefined}
+              onClick={clickable ? (e) => { e.stopPropagation(); onAnnotationClick(ann.id); } : undefined}
+            >
+              <NoteText
+                text={ann.text}
+                x={pos.x} y={pos.slurY + 33}
+                fontSize={11} fill={isActive ? '#2563eb' : '#555'} fontStyle="italic"
+              />
+            </g>
           );
         })}
 

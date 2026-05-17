@@ -55,13 +55,18 @@ const defaultTransient = {
   activePanel: null,
   barPickField: null,
   pickedBar: null,
+  activeAnnotationId: null,
+  activeSectionId: null,
+  prefillAnnotationBar: null,
+  prefillSectionBar: null,
 };
 
 const defaultState = { ...defaultDiagramState, ...defaultTransient };
 
 function getDiagramSnapshot(s) {
   // eslint-disable-next-line no-unused-vars
-  const { selectedPhraseIndex, selectedTextRange, editMode, activePanel, barPickField, pickedBar, ...data } = s;
+  const { selectedPhraseIndex, selectedTextRange, editMode, activePanel, barPickField, pickedBar,
+          activeAnnotationId, activeSectionId, prefillAnnotationBar, prefillSectionBar, ...data } = s;
   return data;
 }
 
@@ -257,6 +262,55 @@ export default function App() {
       if (!px) delete next[firstBar]; else next[firstBar] = Math.round(px);
       return { ...s, rowSpacing: next };
     });
+  }, []);
+
+  // ── Canvas → panel linking ──────────────────────────────────
+  const handleAnnotationCanvasClick = useCallback((id) => {
+    setState(s => ({
+      ...s,
+      activePanel: 'annotations',
+      activeAnnotationId: id,
+      barPickField: null,
+      pickedBar: null,
+    }));
+  }, []);
+
+  const handleSectionCanvasClick = useCallback((id) => {
+    setState(s => ({
+      ...s,
+      activePanel: 'sections',
+      activeSectionId: id,
+      barPickField: null,
+      pickedBar: null,
+    }));
+  }, []);
+
+  const handleAnnotationEditChange = useCallback((id) => {
+    setState(s => ({ ...s, activeAnnotationId: id ?? null }));
+  }, []);
+
+  const handleSectionEditChange = useCallback((id) => {
+    setState(s => ({ ...s, activeSectionId: id ?? null }));
+  }, []);
+
+  const handleAddAnnotationHere = useCallback((bar) => {
+    setState(s => ({
+      ...s,
+      activePanel: 'annotations',
+      activeAnnotationId: null,
+      selectedPhraseIndex: null,
+      prefillAnnotationBar: { bar, ts: Date.now() },
+    }));
+  }, []);
+
+  const handleAddSectionHere = useCallback((bar) => {
+    setState(s => ({
+      ...s,
+      activePanel: 'sections',
+      activeSectionId: null,
+      selectedPhraseIndex: null,
+      prefillSectionBar: { bar, ts: Date.now() },
+    }));
   }, []);
 
   // Derive textarea selection from selected phrase or sub-phrase
@@ -622,6 +676,10 @@ export default function App() {
               onSlurStartClick={handleSlurStartClick}
               onRemoveRehearsalMark={handleRemoveRehearsalMark}
               onBarPick={handleBarPick}
+              activeAnnotationId={state.activeAnnotationId}
+              activeSectionId={state.activeSectionId}
+              onAnnotationClick={handleAnnotationCanvasClick}
+              onSectionClick={handleSectionCanvasClick}
             />
             {state.selectedPhraseIndex != null && overlapPopoverPos && !state.editMode && (
               <OverlapPopover
@@ -630,6 +688,8 @@ export default function App() {
                 position={overlapPopoverPos}
                 onClose={() => setState(s => ({ ...s, selectedPhraseIndex: null, selectedTextRange: null }))}
                 onChange={handleOverlapChange}
+                onAddAnnotationHere={handleAddAnnotationHere}
+                onAddSectionHere={handleAddSectionHere}
               />
             )}
           </div>
@@ -655,6 +715,9 @@ export default function App() {
             onBarFieldFocus={handleBarFieldFocus}
             pickedBar={state.pickedBar}
             layoutRows={layout.rows}
+            requestEditId={state.activeSectionId}
+            onEditChange={handleSectionEditChange}
+            prefillBar={state.prefillSectionBar}
           />
         )}
 
@@ -668,6 +731,9 @@ export default function App() {
             onBarFieldFocus={handleBarFieldFocus}
             pickedBar={state.pickedBar}
             layoutRows={layout.rows}
+            requestEditId={state.activeAnnotationId}
+            onEditChange={handleAnnotationEditChange}
+            prefillBar={state.prefillAnnotationBar}
           />
         )}
 

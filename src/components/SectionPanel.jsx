@@ -73,6 +73,9 @@ export default function SectionPanel({
   onBarFieldFocus,
   pickedBar,
   layoutRows = [],
+  requestEditId,
+  onEditChange,
+  prefillBar,
 }) {
   const [label, setLabel] = useState('');
   const [startBar, setStartBar] = useState('');
@@ -84,6 +87,30 @@ export default function SectionPanel({
   const [editFields, setEditFields] = useState({});
 
   const focusedField = useRef(null);
+
+  // Pre-fill startBar when "Add Section Here" is triggered from a phrase popover.
+  useEffect(() => {
+    if (prefillBar != null) { setStartBar(String(prefillBar.bar)); setEditingId(null); }
+  }, [prefillBar]);
+
+  // Open the editor for a specific section when requested from the canvas.
+  useEffect(() => {
+    if (!requestEditId) return;
+    const item = sections.find(s => s.id === requestEditId);
+    if (item) {
+      setEditingId(item.id);
+      setEditFields({
+        label: item.label,
+        startBar: String(item.startBar),
+        endBar: item.endBar != null ? String(item.endBar) : '',
+        level: item.level ?? 0,
+        color: item.color || COLORS[0],
+      });
+    }
+  }, [requestEditId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Report editing id changes back to App so the canvas can highlight the active section.
+  useEffect(() => { onEditChange?.(editingId); }, [editingId, onEditChange]);
 
   useEffect(() => {
     if (!pickedBar) return;

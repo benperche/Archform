@@ -48,6 +48,9 @@ export default function AnnotationPanel({
   onBarFieldFocus,
   pickedBar,
   layoutRows = [],
+  requestEditId,
+  onEditChange,
+  prefillBar,
 }) {
   const [annBar, setAnnBar] = useState('');
   const [annText, setAnnText] = useState('');
@@ -56,6 +59,22 @@ export default function AnnotationPanel({
   const [editFields, setEditFields] = useState({});
 
   const focusedField = useRef(null);
+
+  // Pre-fill bar field when "Add Annotation Here" is triggered from a phrase popover.
+  // prefillBar is a { bar, ts } object; ts changes every time so the effect always fires.
+  useEffect(() => {
+    if (prefillBar != null) { setAnnBar(String(prefillBar.bar)); setEditingId(null); }
+  }, [prefillBar]);
+
+  // Open the editor for a specific annotation when requested from the canvas.
+  useEffect(() => {
+    if (!requestEditId) return;
+    const item = annotations.find(a => a.id === requestEditId);
+    if (item) { setEditingId(item.id); setEditFields({ bar: String(item.bar), text: item.text }); }
+  }, [requestEditId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Report editing id changes back to App so the canvas can highlight the active annotation.
+  useEffect(() => { onEditChange?.(editingId); }, [editingId, onEditChange]);
 
   useEffect(() => {
     if (!pickedBar) return;
