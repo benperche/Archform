@@ -864,6 +864,7 @@ export default function App() {
             onUpdate={handleUpdateTimeSig}
             onBarFieldFocus={handleBarFieldFocus}
             pickedBar={state.pickedBar}
+            layoutRows={layout.rows}
           />
         )}
 

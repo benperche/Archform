@@ -3,6 +3,17 @@ import { TrashIcon } from './Icons';
 
 const fmtBar = n => (Number.isInteger(n) ? String(n) : n.toFixed(1));
 
+function barWarning(barStr, rows) {
+  const b = parseFloat(barStr);
+  if (isNaN(b) || !rows || rows.length === 0) return null;
+  const firstBar = rows[0].phrases[0].startBar;
+  const lastRow = rows[rows.length - 1];
+  const lastPhrase = lastRow.phrases[lastRow.phrases.length - 1];
+  const lastBar = lastPhrase.startBar + lastPhrase.length;
+  if (b < firstBar || b > lastBar) return `Bar ${b} is outside the diagram (${fmtBar(firstBar)}–${fmtBar(lastBar)})`;
+  return null;
+}
+
 function rowForBar(bar, rows) {
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
@@ -96,6 +107,9 @@ export default function FermataPanel({
             onChange={e => setBar(e.target.value)}
             onFocus={() => handleFocus('fermataBar')} onBlur={handleBlur}
             onKeyDown={handleKey} placeholder="1" min="1" step="0.5" autoFocus />
+          {barWarning(bar, layoutRows) && (
+            <p className="panel-bar-warning">⚠ {barWarning(bar, layoutRows)}</p>
+          )}
           <button className="btn btn-primary panel-add-btn" onClick={handleAdd} disabled={!canAdd}>
             Add fermata
           </button>
@@ -115,6 +129,9 @@ export default function FermataPanel({
                     onChange={e => setEditBar(e.target.value)}
                     onFocus={() => handleFocus('editFermataBar')} onBlur={handleBlur}
                     onKeyDown={handleEditKey} placeholder="Bar" step="0.5" />
+                  {barWarning(editBar, layoutRows) && (
+                    <p className="panel-bar-warning">⚠ {barWarning(editBar, layoutRows)}</p>
+                  )}
                   <div className="panel-edit-actions">
                     <button className="btn btn-primary" onClick={saveEdit}>Save</button>
                     <button className="btn" onClick={cancelEdit}>Cancel</button>

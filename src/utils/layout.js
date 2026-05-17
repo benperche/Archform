@@ -269,3 +269,13 @@ export function xToNearestPhrase(svgX, rows, svgY) {
   // Round to nearest integer or half-bar
   return Math.round(nearest * 2) / 2;
 }
+
+// Returns { firstBar, lastBar } for the current layout, or null if empty.
+export function getBarRange(rows) {
+  if (!rows || rows.length === 0) return null;
+  const firstBar = rows[0].phrases[0].startBar;
+  const lastRow = rows[rows.length - 1];
+  const lastPhrase = lastRow.phrases[lastRow.phrases.length - 1];
+  const lastBar = lastPhrase.startBar + lastPhrase.length;
+  return { firstBar, lastBar };
+}

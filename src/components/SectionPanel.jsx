@@ -3,6 +3,17 @@ import { TrashIcon } from './Icons';
 
 const LEVEL_LABELS = ['Broad', 'Mid', 'Fine'];
 
+function barWarning(barStr, rows) {
+  const b = parseFloat(barStr);
+  if (isNaN(b) || !rows || rows.length === 0) return null;
+  const firstBar = rows[0].phrases[0].startBar;
+  const lastRow = rows[rows.length - 1];
+  const lastPhrase = lastRow.phrases[lastRow.phrases.length - 1];
+  const lastBar = lastPhrase.startBar + lastPhrase.length;
+  if (b < firstBar || b > lastBar) return `Bar ${b} is outside the diagram (${firstBar}–${lastBar})`;
+  return null;
+}
+
 const COLORS = [
   '#1a1a1a',
   '#2563eb',
@@ -207,6 +218,12 @@ export default function SectionPanel({
           <label className="panel-label">Colour</label>
           <ColorPicker value={color} onChange={setColor} />
 
+          {barWarning(startBar, layoutRows) && (
+            <p className="panel-bar-warning">⚠ {barWarning(startBar, layoutRows)}</p>
+          )}
+          {endBar.trim() && barWarning(endBar, layoutRows) && (
+            <p className="panel-bar-warning">⚠ End: {barWarning(endBar, layoutRows)}</p>
+          )}
           <button className="btn btn-primary panel-add-btn" onClick={handleAdd} disabled={!canAdd}>
             Add section
           </button>
@@ -234,6 +251,9 @@ export default function SectionPanel({
                       onFocus={() => handleFocus('editEndBar')} onBlur={handleBlur}
                       onKeyDown={handleEditKey} placeholder="End (opt.)" step="0.5" />
                   </div>
+                  {(barWarning(editFields.startBar, layoutRows) || (editFields.endBar?.trim() && barWarning(editFields.endBar, layoutRows))) && (
+                    <p className="panel-bar-warning">⚠ {barWarning(editFields.startBar, layoutRows) || barWarning(editFields.endBar, layoutRows)}</p>
+                  )}
                   <div className="level-picker" style={{ marginTop: 6 }}>
                     {LEVEL_LABELS.map((lbl, i) => (
                       <button key={i} className={`level-btn ${editFields.level === i ? 'active' : ''}`}

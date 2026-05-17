@@ -9,6 +9,17 @@ const TYPE_OPTIONS = [
 
 const fmtBar = n => (Number.isInteger(n) ? String(n) : n.toFixed(1));
 
+function barWarning(barStr, rows) {
+  const b = parseFloat(barStr);
+  if (isNaN(b) || !rows || rows.length === 0) return null;
+  const firstBar = rows[0].phrases[0].startBar;
+  const lastRow = rows[rows.length - 1];
+  const lastPhrase = lastRow.phrases[lastRow.phrases.length - 1];
+  const lastBar = lastPhrase.startBar + lastPhrase.length;
+  if (b < firstBar || b > lastBar) return `Bar ${b} is outside the diagram (${fmtBar(firstBar)}–${fmtBar(lastBar)})`;
+  return null;
+}
+
 function rowForBar(bar, rows) {
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
@@ -125,6 +136,9 @@ export default function RepeatsPanel({
               </select>
             </div>
           </div>
+          {barWarning(bar, layoutRows) && (
+            <p className="panel-bar-warning">⚠ {barWarning(bar, layoutRows)}</p>
+          )}
           <button className="btn btn-primary panel-add-btn" onClick={handleAdd} disabled={!canAdd}>
             Add barline
           </button>
@@ -151,6 +165,9 @@ export default function RepeatsPanel({
                       {TYPE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                     </select>
                   </div>
+                  {barWarning(editFields.bar, layoutRows) && (
+                    <p className="panel-bar-warning">⚠ {barWarning(editFields.bar, layoutRows)}</p>
+                  )}
                   <div className="panel-edit-actions">
                     <button className="btn btn-primary" onClick={saveEdit}>Save</button>
                     <button className="btn" onClick={cancelEdit}>Cancel</button>

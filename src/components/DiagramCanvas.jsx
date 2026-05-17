@@ -24,6 +24,7 @@ function mainArchParams(x, width, slurY) {
 // visualX: left edge of the arch (shifted left when there is an overlap).
 // x: nominal bar position (used for bar labels and rehearsal mark placement).
 function Slur({ x, visualX, width, slurY, startBar, length, isLastInRow, endBar, overlapPx, selected, editMode, hasMarkAtBar, hideBarNum, hideStartTick, hideEndTick, onClick, onStartClick }) {
+  const [hovered, setHovered] = useState(false);
   const hasOverlap = overlapPx > 0;
   const { x1, x2, cpY, cp1x, cp2x } = mainArchParams(visualX, width, slurY);
   const d = `M ${x1} ${slurY} C ${cp1x} ${cpY} ${cp2x} ${cpY} ${x2} ${slurY}`;
@@ -33,14 +34,17 @@ function Slur({ x, visualX, width, slurY, startBar, length, isLastInRow, endBar,
   const nx = x + 1;
 
   const inMarkMode = editMode === 'rehearsalMarks';
-  const stroke = selected ? '#2563eb' : '#1a1a1a';
+  const stroke = selected ? '#2563eb' : (hovered ? '#4878cf' : '#1a1a1a');
 
   // Width of the bar number string in px (approx, for hit rect sizing)
   const bnStr = formatBar(startBar);
   const bnW = Math.max(18, bnStr.length * 6);
 
   return (
-    <g>
+    <g
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
       {/* Full bounding-box hit area — covers the entire arch rectangle */}
       <rect
         x={x1 - 4} y={cpY - 8}
@@ -190,17 +194,25 @@ function SubSlur({ x1, y1, x2, y2, length, showPlus, onClick }) {
 
 // Boxed rehearsal mark — y is the vertical centre of the box
 function RehearsalMark({ x, y, label, markStyle, onClick }) {
+  const [hovered, setHovered] = useState(false);
   const isBarNum = markStyle === 'bars';
   const fs = isBarNum ? 13 : 12;
   const pad = 5;
   const w = Math.max(20, label.length * (fs * 0.65) + pad * 2);
   const h = 19;
   return (
-    <g style={{ cursor: 'pointer' }} onClick={onClick}>
+    <g
+      style={{ cursor: 'pointer' }}
+      onClick={onClick}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
       <rect
         x={x - w / 2} y={y - h / 2}
         width={w} height={h}
-        fill="white" stroke="#1a1a1a" strokeWidth={1.2} rx={1.5}
+        fill={hovered ? '#eff6ff' : 'white'}
+        stroke={hovered ? '#2563eb' : '#1a1a1a'}
+        strokeWidth={1.2} rx={1.5}
       />
       <text
         x={x} y={y}
@@ -209,7 +221,7 @@ function RehearsalMark({ x, y, label, markStyle, onClick }) {
         fontSize={fs}
         fontFamily="Georgia, 'Times New Roman', serif"
         fontWeight="bold"
-        fill="#1a1a1a"
+        fill={hovered ? '#2563eb' : '#1a1a1a'}
       >
         {label}
       </text>
@@ -221,16 +233,22 @@ function RehearsalMark({ x, y, label, markStyle, onClick }) {
 // levelRank: 0 = innermost (closest to slur), higher = further away.
 // isBroad: true when the absolute level value is 0 (bold/thick styling).
 function SectionMarker({ x1, x2, y, label, level, levelRank, isOpen, color, isActive, onClick }) {
+  const [hovered, setHovered] = useState(false);
   const isBroad = level === 0;
   const levelOffset = levelRank * 26;
   const lineY = y - (MAIN_MAX_ARCH + 14) - levelOffset;
   const labelX = isOpen ? x1 + 6 : (x1 + x2) / 2;
   const labelAnchor = isOpen ? 'start' : 'middle';
   const sw = isBroad ? 1.5 : 0.9;
-  const col = isActive ? '#2563eb' : (color || '#1a1a1a');
+  const col = isActive ? '#2563eb' : (hovered && onClick ? '#4878cf' : (color || '#1a1a1a'));
 
   return (
-    <g style={onClick ? { cursor: 'pointer' } : undefined} onClick={onClick}>
+    <g
+      style={onClick ? { cursor: 'pointer' } : undefined}
+      onClick={onClick}
+      onMouseEnter={onClick ? () => setHovered(true) : undefined}
+      onMouseLeave={onClick ? () => setHovered(false) : undefined}
+    >
       {/* Wide transparent hit area along the bracket line */}
       {onClick && (
         <rect
@@ -285,6 +303,28 @@ function TimeSig({ x, slurY, numerator, denominator, atBoundary }) {
         fontFamily="Georgia, 'Times New Roman', serif" fontWeight="bold" fill="#1a1a1a">
         {denStr}
       </text>
+    </g>
+  );
+}
+
+// Inline label text below the phrase baseline, with hover highlight when clickable.
+function LabelItem({ lbl, pos, isActive, clickable, onLabelClick }) {
+  const [hovered, setHovered] = useState(false);
+  const estW = Math.max(50, lbl.text.length * 6.5);
+  const fill = isActive ? '#2563eb' : (hovered && clickable ? '#4878cf' : '#555');
+  return (
+    <g
+      style={clickable ? { cursor: 'pointer' } : undefined}
+      onClick={clickable ? (e) => { e.stopPropagation(); onLabelClick(lbl.id); } : undefined}
+      onMouseEnter={clickable ? () => setHovered(true) : undefined}
+      onMouseLeave={clickable ? () => setHovered(false) : undefined}
+    >
+      <rect x={pos.x - 3} y={pos.slurY + 33 - 12} width={estW + 6} height={18} fill="transparent" />
+      <NoteText
+        text={lbl.text}
+        x={pos.x} y={pos.slurY + 33}
+        fontSize={11} fill={fill} fontStyle="italic"
+      />
     </g>
   );
 }
@@ -540,22 +580,15 @@ export default function DiagramCanvas({
         {labels.map(lbl => {
           const pos = getBarPos(lbl.bar);
           if (!pos) return null;
-          const isActive = lbl.id === activeLabelId;
-          const clickable = !barPickMode && !editMode && !!onLabelClick;
-          const estW = Math.max(50, lbl.text.length * 6.5);
           return (
-            <g
+            <LabelItem
               key={lbl.id}
-              style={clickable ? { cursor: 'pointer' } : undefined}
-              onClick={clickable ? (e) => { e.stopPropagation(); onLabelClick(lbl.id); } : undefined}
-            >
-              <rect x={pos.x - 3} y={pos.slurY + 33 - 12} width={estW + 6} height={18} fill="transparent" />
-              <NoteText
-                text={lbl.text}
-                x={pos.x} y={pos.slurY + 33}
-                fontSize={11} fill={isActive ? '#2563eb' : '#555'} fontStyle="italic"
-              />
-            </g>
+              lbl={lbl}
+              pos={pos}
+              isActive={lbl.id === activeLabelId}
+              clickable={!barPickMode && !editMode && !!onLabelClick}
+              onLabelClick={onLabelClick}
+            />
           );
         })}
 

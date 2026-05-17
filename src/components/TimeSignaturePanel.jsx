@@ -1,5 +1,18 @@
 import { useState, useEffect, useRef } from 'react';
 
+const fmtBar = n => (Number.isInteger(n) ? String(n) : n.toFixed(1));
+
+function barWarning(barStr, rows) {
+  const b = parseFloat(barStr);
+  if (isNaN(b) || !rows || rows.length === 0) return null;
+  const firstBar = rows[0].phrases[0].startBar;
+  const lastRow = rows[rows.length - 1];
+  const lastPhrase = lastRow.phrases[lastRow.phrases.length - 1];
+  const lastBar = lastPhrase.startBar + lastPhrase.length;
+  if (b < firstBar || b > lastBar) return `Bar ${b} is outside the diagram (${fmtBar(firstBar)}–${fmtBar(lastBar)})`;
+  return null;
+}
+
 const COMMON = [
   [4, 4], [3, 4], [2, 4], [2, 2],
   [6, 8], [9, 8], [12, 8], [3, 8],
@@ -14,6 +27,7 @@ export default function TimeSignaturePanel({
   onUpdate,
   onBarFieldFocus,
   pickedBar,
+  layoutRows = [],
 }) {
   const [num, setNum] = useState('4');
   const [den, setDen] = useState('4');
@@ -114,6 +128,9 @@ export default function TimeSignaturePanel({
             onFocus={() => handleFocus('tsBar')} onBlur={handleBlur}
             onKeyDown={handleKey} />
 
+          {barWarning(bar, layoutRows) && (
+            <p className="panel-bar-warning">⚠ {barWarning(bar, layoutRows)}</p>
+          )}
           <button className="btn btn-primary panel-add-btn" onClick={handleAdd} disabled={!canAdd}>
             Add time signature
           </button>
@@ -144,6 +161,9 @@ export default function TimeSignaturePanel({
                       onKeyDown={handleEditKey} />
                   </div>
                 </div>
+                {barWarning(editFields.bar, layoutRows) && (
+                  <p className="panel-bar-warning">⚠ {barWarning(editFields.bar, layoutRows)}</p>
+                )}
                 <div className="panel-edit-actions">
                   <button className="btn btn-primary" onClick={saveEdit}>Save</button>
                   <button className="btn" onClick={cancelEdit}>Cancel</button>

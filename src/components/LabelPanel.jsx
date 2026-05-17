@@ -3,6 +3,17 @@ import { TrashIcon } from './Icons';
 
 const fmtBar = n => (Number.isInteger(n) ? String(n) : n.toFixed(1));
 
+function barWarning(barStr, rows) {
+  const b = parseFloat(barStr);
+  if (isNaN(b) || !rows || rows.length === 0) return null;
+  const firstBar = rows[0].phrases[0].startBar;
+  const lastRow = rows[rows.length - 1];
+  const lastPhrase = lastRow.phrases[lastRow.phrases.length - 1];
+  const lastBar = lastPhrase.startBar + lastPhrase.length;
+  if (b < firstBar || b > lastBar) return `Bar ${b} is outside the diagram (${fmtBar(firstBar)}–${fmtBar(lastBar)})`;
+  return null;
+}
+
 function rowForBar(bar, rows) {
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
@@ -136,6 +147,9 @@ export default function LabelPanel({
                 onKeyDown={handleKey} placeholder="Clarinet" />
             </div>
           </div>
+          {barWarning(labelBar, layoutRows) && (
+            <p className="panel-bar-warning">⚠ {barWarning(labelBar, layoutRows)}</p>
+          )}
           <p className="panel-glyph-hint">
             Tip: type <code>q</code>, <code>h</code>, <code>e</code> etc. in the text to insert note symbols — see ? for full list.
           </p>
@@ -164,6 +178,9 @@ export default function LabelPanel({
                       onChange={e => ef({ text: e.target.value })}
                       onKeyDown={handleEditKey} placeholder="Text" />
                   </div>
+                  {barWarning(editFields.bar, layoutRows) && (
+                    <p className="panel-bar-warning">⚠ {barWarning(editFields.bar, layoutRows)}</p>
+                  )}
                   <div className="panel-edit-actions">
                     <button className="btn btn-primary" onClick={saveEdit}>Save</button>
                     <button className="btn" onClick={cancelEdit}>Cancel</button>
