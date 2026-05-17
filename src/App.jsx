@@ -654,6 +654,7 @@ export default function App() {
             onUpdate={handleUpdateSection}
             onBarFieldFocus={handleBarFieldFocus}
             pickedBar={state.pickedBar}
+            layoutRows={layout.rows}
           />
         )}
 
@@ -666,6 +667,7 @@ export default function App() {
             onUpdateAnnotation={handleUpdateAnnotation}
             onBarFieldFocus={handleBarFieldFocus}
             pickedBar={state.pickedBar}
+            layoutRows={layout.rows}
           />
         )}
 

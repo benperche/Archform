@@ -27,6 +27,40 @@ function ColorPicker({ value, onChange }) {
   );
 }
 
+const fmtBar = n => (Number.isInteger(n) ? String(n) : n.toFixed(1));
+
+function rowForBar(bar, rows) {
+  for (const row of rows) {
+    const first = row.phrases[0].startBar;
+    const last = row.phrases[row.phrases.length - 1];
+    if (bar >= first && bar <= last.startBar + last.length) return row;
+  }
+  return rows[rows.length - 1] ?? null;
+}
+
+function groupItems(items, barKey, rows) {
+  // Returns [{row, items[]}] sorted by row, or null when ≤1 row.
+  if (!rows || rows.length <= 1) return null;
+  const map = new Map(rows.map(r => [r.rowIndex, { row: r, items: [] }]));
+  for (const item of items) {
+    const row = rowForBar(item[barKey], rows);
+    if (row) map.get(row.rowIndex)?.items.push(item);
+  }
+  return [...map.values()].filter(g => g.items.length > 0);
+}
+
+function SystemDivider({ row, first }) {
+  const firstBar = row.phrases[0].startBar;
+  const last = row.phrases[row.phrases.length - 1];
+  const lastBar = last.startBar + last.length;
+  return (
+    <div className="panel-system-divider" style={first ? { borderTop: 'none', marginTop: 0, paddingTop: 0 } : {}}>
+      <span>System {row.rowIndex + 1}</span>
+      <span className="panel-system-bars">bars {fmtBar(firstBar)}–{fmtBar(lastBar)}</span>
+    </div>
+  );
+}
+
 export default function SectionPanel({
   onClose,
   sections,
@@ -35,6 +69,7 @@ export default function SectionPanel({
   onUpdate,
   onBarFieldFocus,
   pickedBar,
+  layoutRows = [],
 }) {
   const [label, setLabel] = useState('');
   const [startBar, setStartBar] = useState('');
@@ -149,50 +184,62 @@ export default function SectionPanel({
         <div className="panel-list">
           {sections.length === 0 ? (
             <p className="panel-empty">No sections yet</p>
-          ) : [...sections].sort((a, b) => (a.startBar ?? 0) - (b.startBar ?? 0)).map(s => (
-            editingId === s.id ? (
-              <div key={s.id} className="panel-item panel-item--editing">
-                <input className="panel-input" value={editFields.label}
-                  onChange={e => ef({ label: e.target.value })} onKeyDown={handleEditKey} />
-                <div className="panel-row" style={{ marginTop: 6 }}>
-                  <input className="panel-input" type="number" value={editFields.startBar}
-                    onChange={e => ef({ startBar: e.target.value })}
-                    onFocus={() => handleFocus('editStartBar')} onBlur={handleBlur}
-                    onKeyDown={handleEditKey} placeholder="Start" step="0.5" />
-                  <input className="panel-input" type="number" value={editFields.endBar}
-                    onChange={e => ef({ endBar: e.target.value })}
-                    onFocus={() => handleFocus('editEndBar')} onBlur={handleBlur}
-                    onKeyDown={handleEditKey} placeholder="End (opt.)" step="0.5" />
+          ) : (() => {
+            const sorted = [...sections].sort((a, b) => (a.startBar ?? 0) - (b.startBar ?? 0));
+            const groups = groupItems(sorted, 'startBar', layoutRows);
+
+            const renderSection = s => (
+              editingId === s.id ? (
+                <div key={s.id} className="panel-item panel-item--editing">
+                  <input className="panel-input" value={editFields.label}
+                    onChange={e => ef({ label: e.target.value })} onKeyDown={handleEditKey} />
+                  <div className="panel-row" style={{ marginTop: 6 }}>
+                    <input className="panel-input" type="number" value={editFields.startBar}
+                      onChange={e => ef({ startBar: e.target.value })}
+                      onFocus={() => handleFocus('editStartBar')} onBlur={handleBlur}
+                      onKeyDown={handleEditKey} placeholder="Start" step="0.5" />
+                    <input className="panel-input" type="number" value={editFields.endBar}
+                      onChange={e => ef({ endBar: e.target.value })}
+                      onFocus={() => handleFocus('editEndBar')} onBlur={handleBlur}
+                      onKeyDown={handleEditKey} placeholder="End (opt.)" step="0.5" />
+                  </div>
+                  <div className="level-picker" style={{ marginTop: 6 }}>
+                    {LEVEL_LABELS.map((lbl, i) => (
+                      <button key={i} className={`level-btn ${editFields.level === i ? 'active' : ''}`}
+                        onClick={() => ef({ level: i })}>{lbl}</button>
+                    ))}
+                  </div>
+                  <div style={{ marginTop: 6 }}>
+                    <ColorPicker value={editFields.color || COLORS[0]} onChange={c => ef({ color: c })} />
+                  </div>
+                  <div className="panel-edit-actions">
+                    <button className="btn btn-primary" onClick={saveEdit}>Save</button>
+                    <button className="btn" onClick={cancelEdit}>Cancel</button>
+                    <button className="item-delete" onClick={() => { onRemove(s.id); cancelEdit(); }}>✕</button>
+                  </div>
                 </div>
-                <div className="level-picker" style={{ marginTop: 6 }}>
-                  {LEVEL_LABELS.map((lbl, i) => (
-                    <button key={i} className={`level-btn ${editFields.level === i ? 'active' : ''}`}
-                      onClick={() => ef({ level: i })}>{lbl}</button>
-                  ))}
+              ) : (
+                <div key={s.id} className="panel-item panel-item--clickable" onClick={() => startEdit(s)}>
+                  <div className="section-color-dot" style={{ background: s.color || COLORS[0] }} />
+                  <div className="panel-item-info">
+                    <span className="panel-item-label">{s.label}</span>
+                    <span className="panel-item-meta">{s.startBar}–{s.endBar != null ? s.endBar : '…'} · {LEVEL_LABELS[s.level] || 'Broad'}</span>
+                  </div>
+                  <button className="item-delete" onClick={e => { e.stopPropagation(); onRemove(s.id); }}>✕</button>
                 </div>
-                <div style={{ marginTop: 6 }}>
-                  <ColorPicker value={editFields.color || COLORS[0]} onChange={c => ef({ color: c })} />
+              )
+            );
+
+            if (groups) {
+              return groups.map((g, gi) => (
+                <div key={g.row.rowIndex}>
+                  <SystemDivider row={g.row} first={gi === 0} />
+                  {g.items.map(renderSection)}
                 </div>
-                <div className="panel-edit-actions">
-                  <button className="btn btn-primary" onClick={saveEdit}>Save</button>
-                  <button className="btn" onClick={cancelEdit}>Cancel</button>
-                  <button className="item-delete" onClick={() => { onRemove(s.id); cancelEdit(); }}>✕</button>
-                </div>
-              </div>
-            ) : (
-              <div key={s.id} className="panel-item panel-item--clickable" onClick={() => startEdit(s)}>
-                <div
-                  className="section-color-dot"
-                  style={{ background: s.color || COLORS[0] }}
-                />
-                <div className="panel-item-info">
-                  <span className="panel-item-label">{s.label}</span>
-                  <span className="panel-item-meta">{s.startBar}–{s.endBar != null ? s.endBar : '…'} · {LEVEL_LABELS[s.level] || 'Broad'}</span>
-                </div>
-                <button className="item-delete" onClick={e => { e.stopPropagation(); onRemove(s.id); }}>✕</button>
-              </div>
-            )
-          ))}
+              ));
+            }
+            return sorted.map(renderSection);
+          })()}
         </div>
       </div>
     </div>

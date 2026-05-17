@@ -1,5 +1,38 @@
 import { useState, useEffect, useRef } from 'react';
 
+const fmtBar = n => (Number.isInteger(n) ? String(n) : n.toFixed(1));
+
+function rowForBar(bar, rows) {
+  for (const row of rows) {
+    const first = row.phrases[0].startBar;
+    const last = row.phrases[row.phrases.length - 1];
+    if (bar >= first && bar <= last.startBar + last.length) return row;
+  }
+  return rows[rows.length - 1] ?? null;
+}
+
+function groupItems(items, barKey, rows) {
+  if (!rows || rows.length <= 1) return null;
+  const map = new Map(rows.map(r => [r.rowIndex, { row: r, items: [] }]));
+  for (const item of items) {
+    const row = rowForBar(item[barKey], rows);
+    if (row) map.get(row.rowIndex)?.items.push(item);
+  }
+  return [...map.values()].filter(g => g.items.length > 0);
+}
+
+function SystemDivider({ row, first }) {
+  const firstBar = row.phrases[0].startBar;
+  const last = row.phrases[row.phrases.length - 1];
+  const lastBar = last.startBar + last.length;
+  return (
+    <div className="panel-system-divider" style={first ? { borderTop: 'none', marginTop: 0, paddingTop: 0 } : {}}>
+      <span>System {row.rowIndex + 1}</span>
+      <span className="panel-system-bars">bars {fmtBar(firstBar)}–{fmtBar(lastBar)}</span>
+    </div>
+  );
+}
+
 export default function AnnotationPanel({
   onClose,
   annotations,
@@ -8,6 +41,7 @@ export default function AnnotationPanel({
   onUpdateAnnotation,
   onBarFieldFocus,
   pickedBar,
+  layoutRows = [],
 }) {
   const [annBar, setAnnBar] = useState('');
   const [annText, setAnnText] = useState('');
@@ -88,35 +122,50 @@ export default function AnnotationPanel({
         <div className="panel-list">
           {annotations.length === 0 ? (
             <p className="panel-empty">No annotations yet</p>
-          ) : [...annotations].sort((a, b) => (a.bar ?? 0) - (b.bar ?? 0)).map(a => (
-            editingId === a.id ? (
-              <div key={a.id} className="panel-item panel-item--editing">
-                <div className="panel-row">
-                  <input className="panel-input" type="number" value={editFields.bar}
-                    onChange={e => ef({ bar: e.target.value })}
-                    onFocus={() => handleFocus('editAnnotationBar')} onBlur={handleBlur}
-                    onKeyDown={handleEditKey} placeholder="Bar" step="0.5"
-                    style={{ flex: '0 0 72px' }} />
-                  <input className="panel-input" value={editFields.text}
-                    onChange={e => ef({ text: e.target.value })}
-                    onKeyDown={handleEditKey} placeholder="Text" />
+          ) : (() => {
+            const sorted = [...annotations].sort((a, b) => (a.bar ?? 0) - (b.bar ?? 0));
+            const groups = groupItems(sorted, 'bar', layoutRows);
+
+            const renderAnnotation = a => (
+              editingId === a.id ? (
+                <div key={a.id} className="panel-item panel-item--editing">
+                  <div className="panel-row">
+                    <input className="panel-input" type="number" value={editFields.bar}
+                      onChange={e => ef({ bar: e.target.value })}
+                      onFocus={() => handleFocus('editAnnotationBar')} onBlur={handleBlur}
+                      onKeyDown={handleEditKey} placeholder="Bar" step="0.5"
+                      style={{ flex: '0 0 72px' }} />
+                    <input className="panel-input" value={editFields.text}
+                      onChange={e => ef({ text: e.target.value })}
+                      onKeyDown={handleEditKey} placeholder="Text" />
+                  </div>
+                  <div className="panel-edit-actions">
+                    <button className="btn btn-primary" onClick={saveEdit}>Save</button>
+                    <button className="btn" onClick={cancelEdit}>Cancel</button>
+                    <button className="item-delete" onClick={() => { onRemoveAnnotation(a.id); cancelEdit(); }}>✕</button>
+                  </div>
                 </div>
-                <div className="panel-edit-actions">
-                  <button className="btn btn-primary" onClick={saveEdit}>Save</button>
-                  <button className="btn" onClick={cancelEdit}>Cancel</button>
-                  <button className="item-delete" onClick={() => { onRemoveAnnotation(a.id); cancelEdit(); }}>✕</button>
+              ) : (
+                <div key={a.id} className="panel-item panel-item--clickable" onClick={() => startEdit(a)}>
+                  <div className="panel-item-info">
+                    <span className="panel-item-label" style={{ fontStyle: 'italic' }}>{a.text}</span>
+                    <span className="panel-item-meta">bar {a.bar}</span>
+                  </div>
+                  <button className="item-delete" onClick={e => { e.stopPropagation(); onRemoveAnnotation(a.id); }}>✕</button>
                 </div>
-              </div>
-            ) : (
-              <div key={a.id} className="panel-item panel-item--clickable" onClick={() => startEdit(a)}>
-                <div className="panel-item-info">
-                  <span className="panel-item-label" style={{ fontStyle: 'italic' }}>{a.text}</span>
-                  <span className="panel-item-meta">bar {a.bar}</span>
+              )
+            );
+
+            if (groups) {
+              return groups.map((g, gi) => (
+                <div key={g.row.rowIndex}>
+                  <SystemDivider row={g.row} first={gi === 0} />
+                  {g.items.map(renderAnnotation)}
                 </div>
-                <button className="item-delete" onClick={e => { e.stopPropagation(); onRemoveAnnotation(a.id); }}>✕</button>
-              </div>
-            )
-          ))}
+              ));
+            }
+            return sorted.map(renderAnnotation);
+          })()}
         </div>
       </div>
     </div>

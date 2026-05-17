@@ -413,6 +413,28 @@ body {
   margin-top: 4px;
 }
 
+.panel-system-divider {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: #aaa;
+  padding: 8px 0 4px;
+  border-top: 1px solid var(--border);
+  margin-top: 6px;
+}
+
+.panel-system-bars {
+  font-size: 9px;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  color: #ccc;
+}
+
 .panel-empty {
   font-size: 12px;
   color: #bbb;
