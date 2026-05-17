@@ -404,6 +404,8 @@ export default function App() {
       activePanel: s.activePanel === name ? null : name,
       barPickField: null,
       pickedBar: null,
+      selectedPhraseIndex: null,
+      selectedTextRange: null,
     }));
   }, []);
 

@@ -300,7 +300,7 @@ function TimeSig({ x, slurY, numerator, denominator, atBoundary, isActive, onCli
         <rect x={x - w / 2 - 4} y={slurY - capH - 6} width={w + 8} height={capH * 2 + 12} fill="transparent" />
       )}
       {atBoundary && (
-        <rect x={x - w / 2} y={slurY - 7} width={w} height={10} fill="white" />
+        <rect x={x - w / 2} y={slurY - 7} width={w} height={10} fill="white" style={{ pointerEvents: 'none' }} />
       )}
       <text x={x} y={slurY} textAnchor="middle" fontSize={fs}
         fontFamily="Georgia, 'Times New Roman', serif" fontWeight="bold" fill={col}>
@@ -329,8 +329,8 @@ function RepeatBarlineItem({ rp, x, slurY, isActive, onClick }) {
       onMouseEnter={onClick ? () => setHovered(true) : undefined}
       onMouseLeave={onClick ? () => setHovered(false) : undefined}
     >
-      {/* Wide transparent hit area */}
-      <rect x={x - 12} y={top - 4} width={24} height={h + 8} fill="transparent" />
+      {/* Wide transparent hit area — only when clickable, so it doesn't block other click targets */}
+      {onClick && <rect x={x - 12} y={top - 4} width={24} height={h + 8} fill="transparent" />}
       {rp.type === 'start' && <>
         <line x1={x}       y1={top} x2={x}       y2={bot} stroke={f} strokeWidth={3.5} />
         <line x1={x + sep} y1={top} x2={x + sep} y2={bot} stroke={f} strokeWidth={1} />
