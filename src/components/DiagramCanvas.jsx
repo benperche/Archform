@@ -759,9 +759,9 @@ export default function DiagramCanvas({
           const f = '#1a1a1a';
           return (
             <g key={fm.id}>
-              {/* Dome arc: sweep=0 (CCW) goes upward from left to right endpoint */}
+              {/* Dome arc: sweep=1 (CW in SVG screen coords) goes upward from left to right endpoint */}
               <path
-                d={`M ${cx - r} ${cy} A ${r} ${r} 0 0 0 ${cx + r} ${cy}`}
+                d={`M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${cx + r} ${cy}`}
                 stroke={f} strokeWidth={1.2} fill="none"
               />
               {/* Dot centred on the baseline — level with the arc endpoints */}
