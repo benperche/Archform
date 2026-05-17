@@ -3,7 +3,7 @@
 const NH_RX = 3.5, NH_RY = 2.2;
 const OX = NH_RX;
 const OY = -(NH_RY + 0.5);
-const STX = OX + NH_RX * 0.8;
+const STX = OX + NH_RX;        // stem at right edge of notehead
 const ST_TOP = OY - 10;
 const SP = 7.5;
 const BM_H = 1.8, BM_GAP = 2.2;
