@@ -63,9 +63,11 @@ export default function AnnotationPanel({
 
       <div className="side-panel-body">
         <div className="panel-form">
-          <div className="panel-row">
+          <div className="panel-row" style={{ alignItems: 'flex-end' }}>
             <div style={{ flex: '0 0 80px' }}>
-              <label className="panel-label">Bar<span className="panel-click-hint"> — click diagram</span></label>
+              <label className="panel-label">
+                Bar <span className="panel-click-hint">— click diagram</span>
+              </label>
               <input className="panel-input" type="number" value={annBar}
                 onChange={e => setAnnBar(e.target.value)}
                 onFocus={() => handleFocus('annotationBar')} onBlur={handleBlur}

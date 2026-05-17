@@ -2,7 +2,8 @@ import { useMemo, useState, useEffect, useCallback } from 'react';
 
 // ── SVG note glyph system ─────────────────────────────────────
 // Parses text with note shorthand codes and renders inline SVG glyphs.
-// Codes: w h q e s ee ss sss ssss. Word-boundary delimited so "see" ≠ s+e.
+// Codes: w h q e s ee ss sss ssss  +  triplets: th tq te ts
+// Word-boundary delimited so "see" ≠ s+e, "the" ≠ th+e, etc.
 
 const NH_RX = 3.5, NH_RY = 2.2;      // note head semi-axes
 const OX = NH_RX;                      // head centre x  (left edge at x=0)
@@ -13,11 +14,14 @@ const SP = 7.5;                        // note spacing in beamed groups
 const BM_H = 1.8, BM_GAP = 2.2;      // beam height / gap between parallel beams
 const FL_DX = 4.5, FL_DY = 5;        // flag x-extent and y-extent
 
+const TRIP_W = SP * 2 + STX + 2;     // width of any 3-note triplet group
+
 const NOTE_GW = {
   w: OX * 2 + 2, h: STX + 2, q: STX + 2,
   e: STX + FL_DX + 1, s: STX + FL_DX + 1,
   ee: SP + STX - 3, ss: SP + STX - 3,
   sss: SP * 2 + STX - 3, ssss: SP * 3 + STX - 3,
+  th: TRIP_W, tq: TRIP_W, te: TRIP_W, ts: TRIP_W,
 };
 
 function NoteGlyph({ type, fill: f = '#1a1a1a' }) {
@@ -33,6 +37,27 @@ function NoteGlyph({ type, fill: f = '#1a1a1a' }) {
   const bm = (n, yOff = 0) =>
     <rect x={STX} y={ST_TOP + yOff} width={SP * (n - 1)} height={BM_H} fill={f} />;
 
+  // Triplet bracket: open square bracket with "3" in the centre, sitting above the stems
+  const trip3 = () => {
+    const lx = STX;
+    const rx = STX + SP * 2;
+    const cx = (lx + rx) / 2;
+    const by = ST_TOP - 2;   // bracket y
+    const ty = ST_TOP - 6;   // "3" numeral y
+    const tick = 3;           // vertical tick length
+    const gap = 3;            // half-gap around the numeral
+    return (
+      <g>
+        <line x1={lx}       y1={by} x2={cx - gap} y2={by} stroke={f} strokeWidth={0.7} />
+        <line x1={lx}       y1={by} x2={lx}       y2={by - tick} stroke={f} strokeWidth={0.7} />
+        <line x1={rx}       y1={by} x2={cx + gap} y2={by} stroke={f} strokeWidth={0.7} />
+        <line x1={rx}       y1={by} x2={rx}       y2={by - tick} stroke={f} strokeWidth={0.7} />
+        <text x={cx} y={ty} fontSize={5} textAnchor="middle"
+          fontFamily="Georgia, 'Times New Roman', serif" fill={f}>3</text>
+      </g>
+    );
+  };
+
   switch (type) {
     case 'w':    return <g>{hd(0, false)}</g>;
     case 'h':    return <g>{hd(0, false)}{st()}</g>;
@@ -43,11 +68,16 @@ function NoteGlyph({ type, fill: f = '#1a1a1a' }) {
     case 'ss':   return <g>{hd()}{st()}{hd(SP)}{st(SP)}{bm(2)}{bm(2, BM_H + BM_GAP)}</g>;
     case 'sss':  return <g>{hd()}{st()}{hd(SP)}{st(SP)}{hd(SP * 2)}{st(SP * 2)}{bm(3)}{bm(3, BM_H + BM_GAP)}</g>;
     case 'ssss': return <g>{hd()}{st()}{hd(SP)}{st(SP)}{hd(SP * 2)}{st(SP * 2)}{hd(SP * 3)}{st(SP * 3)}{bm(4)}{bm(4, BM_H + BM_GAP)}</g>;
+    // Triplets: 3 notes + "3" bracket
+    case 'th':   return <g>{hd(0,false)}{st()}{hd(SP,false)}{st(SP)}{hd(SP*2,false)}{st(SP*2)}{trip3()}</g>;
+    case 'tq':   return <g>{hd()}{st()}{hd(SP)}{st(SP)}{hd(SP*2)}{st(SP*2)}{trip3()}</g>;
+    case 'te':   return <g>{hd()}{st()}{hd(SP)}{st(SP)}{hd(SP*2)}{st(SP*2)}{bm(3)}{trip3()}</g>;
+    case 'ts':   return <g>{hd()}{st()}{hd(SP)}{st(SP)}{hd(SP*2)}{st(SP*2)}{bm(3)}{bm(3,BM_H+BM_GAP)}{trip3()}</g>;
     default: return null;
   }
 }
 
-const NOTE_CODES = /\b(ssss|sss|ss|ee|w|h|q|e|s)\b/g;
+const NOTE_CODES = /\b(ssss|sss|ss|ee|ts|te|tq|th|w|h|q|e|s)\b/g;
 function parseNoteText(text) {
   const tokens = [];
   let last = 0;

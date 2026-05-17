@@ -82,15 +82,24 @@ export default function HelpModal({ onClose }) {
               You can include note symbols in annotation text using shorthand codes:
             </p>
             <div className="help-note-table">
-              <div className="help-note-row"><code>q</code><span>quarter note (crotchet)</span></div>
-              <div className="help-note-row"><code>h</code><span>half note (minim)</span></div>
               <div className="help-note-row"><code>w</code><span>whole note (semibreve)</span></div>
+              <div className="help-note-row"><code>h</code><span>half note (minim)</span></div>
+              <div className="help-note-row"><code>q</code><span>quarter note (crotchet)</span></div>
               <div className="help-note-row"><code>e</code><span>eighth note (quaver)</span></div>
               <div className="help-note-row"><code>s</code><span>sixteenth note (semiquaver)</span></div>
               <div className="help-note-row"><code>ee</code><span>two beamed eighths</span></div>
               <div className="help-note-row"><code>ss / sss / ssss</code><span>two / three / four beamed sixteenths</span></div>
             </div>
-            <p>Example: <code>ee ee q 1st Theme</code></p>
+            <p>
+              Triplet groups show three notes with a <em>3</em> bracket above:
+            </p>
+            <div className="help-note-table">
+              <div className="help-note-row"><code>th</code><span>triplet halves</span></div>
+              <div className="help-note-row"><code>tq</code><span>triplet quarters</span></div>
+              <div className="help-note-row"><code>te</code><span>triplet eighths</span></div>
+              <div className="help-note-row"><code>ts</code><span>triplet sixteenths</span></div>
+            </div>
+            <p>Example: <code>te te q 1st Theme</code></p>
           </section>
 
           <section className="help-section">
