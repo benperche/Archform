@@ -143,6 +143,22 @@ export default function App() {
     return saved === null ? true : saved === '1';
   });
   const [zoom, setZoom] = useState(100);
+  const diagramAreaRef = useRef(null);
+
+  // Cmd/Ctrl + scroll on the diagram area controls zoom.
+  // Must be attached imperatively so we can pass { passive: false } and call preventDefault.
+  useEffect(() => {
+    const el = diagramAreaRef.current;
+    if (!el) return;
+    const handler = (e) => {
+      if (!e.metaKey && !e.ctrlKey) return;
+      e.preventDefault();
+      // deltaY ~100 per mouse-wheel tick; trackpad sends smaller values continuously.
+      setZoom(z => Math.max(50, Math.min(200, Math.round(z - e.deltaY / 10))));
+    };
+    el.addEventListener('wheel', handler, { passive: false });
+    return () => el.removeEventListener('wheel', handler);
+  }, []);
 
   // ── History (undo/redo) ─────────────────────────────────────
   const stateRef = useRef(state);
@@ -782,7 +798,7 @@ export default function App() {
           />
         )}
         <div className="left-side">
-          <div className="diagram-area">
+          <div className="diagram-area" ref={diagramAreaRef}>
             <div className="zoom-controls">
               <button className="btn zoom-btn" onClick={() => setZoom(z => Math.max(50, z - 10))} title="Zoom out">−</button>
               <span className="zoom-label">{zoom}%</span>
