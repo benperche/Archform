@@ -659,7 +659,7 @@ export default function DiagramCanvas({
             <RehearsalMark
               key={mark.id}
               x={pos.x}
-              y={pos.slurY - 34}
+              y={pos.slurY - 46}
               label={mark.label}
               markStyle={rehearsalMarkStyle}
               onClick={() => onRemoveRehearsalMark(mark.id)}
@@ -719,28 +719,28 @@ export default function DiagramCanvas({
           // thin is 1px (half = 0.5). To get ~1.5px visible gap: 1.75 + 1.5 + 0.5 = 3.75 → use 4px.
           const sep = 4;
           if (rp.type === 'start') {
-            // thin | thick  ·· (dots to the right)
+            // ||:  →  thick | thin  ··  (thick on the outside/left)
             return (
               <g key={rp.id}>
-                <line x1={x}       y1={top} x2={x}       y2={bot} stroke={f} strokeWidth={1} />
-                <line x1={x + sep} y1={top} x2={x + sep} y2={bot} stroke={f} strokeWidth={3.5} />
+                <line x1={x}       y1={top} x2={x}       y2={bot} stroke={f} strokeWidth={3.5} />
+                <line x1={x + sep} y1={top} x2={x + sep} y2={bot} stroke={f} strokeWidth={1} />
                 <circle cx={x + sep + 5.5} cy={top + h * 0.35} r={1.8} fill={f} />
                 <circle cx={x + sep + 5.5} cy={top + h * 0.65} r={1.8} fill={f} />
               </g>
             );
           }
           if (rp.type === 'end') {
-            // ·· (dots to the left) thick | thin
+            // :||  →  ··  thin | thick  (thick on the outside/right)
             return (
               <g key={rp.id}>
                 <circle cx={x - sep - 5.5} cy={top + h * 0.35} r={1.8} fill={f} />
                 <circle cx={x - sep - 5.5} cy={top + h * 0.65} r={1.8} fill={f} />
-                <line x1={x - sep} y1={top} x2={x - sep} y2={bot} stroke={f} strokeWidth={3.5} />
-                <line x1={x}       y1={top} x2={x}       y2={bot} stroke={f} strokeWidth={1} />
+                <line x1={x - sep} y1={top} x2={x - sep} y2={bot} stroke={f} strokeWidth={1} />
+                <line x1={x}       y1={top} x2={x}       y2={bot} stroke={f} strokeWidth={3.5} />
               </g>
             );
           }
-          // final barline: thin | thick
+          // final barline: thin | thick (thick on the outside/right)
           return (
             <g key={rp.id}>
               <line x1={x - sep / 2} y1={top} x2={x - sep / 2} y2={bot} stroke={f} strokeWidth={1} />
