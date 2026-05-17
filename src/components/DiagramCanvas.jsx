@@ -343,6 +343,10 @@ function RepeatBarlineItem({ rp, x, slurY, isActive, onClick }) {
         <line x1={x - sep} y1={top} x2={x - sep} y2={bot} stroke={f} strokeWidth={1} />
         <line x1={x}       y1={top} x2={x}       y2={bot} stroke={f} strokeWidth={3.5} />
       </>}
+      {rp.type === 'double' && <>
+        <line x1={x - sep / 2} y1={top} x2={x - sep / 2} y2={bot} stroke={f} strokeWidth={1} />
+        <line x1={x + sep / 2} y1={top} x2={x + sep / 2} y2={bot} stroke={f} strokeWidth={1} />
+      </>}
       {rp.type === 'final' && <>
         <line x1={x - sep / 2} y1={top} x2={x - sep / 2} y2={bot} stroke={f} strokeWidth={1} />
         <line x1={x + sep / 2} y1={top} x2={x + sep / 2} y2={bot} stroke={f} strokeWidth={3.5} />

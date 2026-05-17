@@ -2,9 +2,10 @@ import { useState, useEffect, useRef } from 'react';
 import { TrashIcon } from './Icons';
 
 const TYPE_OPTIONS = [
-  { value: 'start', label: '||:  Start repeat' },
-  { value: 'end',   label: ':||  End repeat' },
-  { value: 'final', label: '=|  Final barline' },
+  { value: 'start',  label: '||:  Start repeat' },
+  { value: 'end',    label: ':||  End repeat' },
+  { value: 'double', label: '||   Double barline' },
+  { value: 'final',  label: '=|   Final barline' },
 ];
 
 const fmtBar = n => (Number.isInteger(n) ? String(n) : n.toFixed(1));

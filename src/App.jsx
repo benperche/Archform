@@ -881,11 +881,11 @@ export default function App() {
               <button className={`btn bottom-btn ${state.activePanel === 'labels' ? 'btn-active' : ''}`}
                 onClick={() => togglePanel('labels')}>Labels</button>
               <button className={`btn bottom-btn ${state.activePanel === 'timeSigs' ? 'btn-active' : ''}`}
-                onClick={() => togglePanel('timeSigs')}>Time sigs</button>
+                onClick={() => togglePanel('timeSigs')}>Time signatures</button>
               <button className={`btn bottom-btn ${state.activePanel === 'rehearsalMarks' ? 'btn-active' : ''}`}
-                onClick={() => togglePanel('rehearsalMarks')}>Reh. marks</button>
+                onClick={() => togglePanel('rehearsalMarks')}>Rehearsal marks</button>
               <button className={`btn bottom-btn ${state.activePanel === 'repeats' ? 'btn-active' : ''}`}
-                onClick={() => togglePanel('repeats')}>Barlines</button>
+                onClick={() => togglePanel('repeats')}>Barlines & repeats</button>
               <button className={`btn bottom-btn ${state.activePanel === 'fermatas' ? 'btn-active' : ''}`}
                 onClick={() => togglePanel('fermatas')}>Fermatas</button>
             </div>
