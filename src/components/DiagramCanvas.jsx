@@ -154,7 +154,7 @@ function mainArchParams(x, width, slurY) {
 // A main phrase slur with center length label, ticks, and start bar number.
 // visualX: left edge of the arch (shifted left when there is an overlap).
 // x: nominal bar position (used for bar labels and rehearsal mark placement).
-function Slur({ x, visualX, width, slurY, startBar, length, isLastInRow, endBar, overlapPx, selected, editMode, hasMarkAtBar, hideBarNum, onClick, onStartClick }) {
+function Slur({ x, visualX, width, slurY, startBar, length, isLastInRow, endBar, overlapPx, selected, editMode, hasMarkAtBar, hideBarNum, hideStartTick, hideEndTick, onClick, onStartClick }) {
   const hasOverlap = overlapPx > 0;
   const { x1, x2, cpY, cp1x, cp2x } = mainArchParams(visualX, width, slurY);
   const d = `M ${x1} ${slurY} C ${cp1x} ${cpY} ${cp2x} ${cpY} ${x2} ${slurY}`;
@@ -184,10 +184,14 @@ function Slur({ x, visualX, width, slurY, startBar, length, isLastInRow, endBar,
       {/* Slur arc */}
       <path d={d} fill="none" stroke={stroke} strokeWidth={selected ? 2 : 1.5} strokeLinecap="round" />
 
-      {/* Start tick (at visual start) */}
-      <line x1={x1} y1={slurY - 6} x2={x1} y2={slurY + 3} stroke={stroke} strokeWidth={1.2} />
-      {/* End tick */}
-      <line x1={x2} y1={slurY - 6} x2={x2} y2={slurY + 3} stroke={stroke} strokeWidth={1.2} />
+      {/* Start tick (at visual start) — hidden when a repeat barline sits here */}
+      {!hideStartTick && (
+        <line x1={x1} y1={slurY - 6} x2={x1} y2={slurY + 3} stroke={stroke} strokeWidth={1.2} />
+      )}
+      {/* End tick — hidden when a repeat barline sits here */}
+      {!hideEndTick && (
+        <line x1={x2} y1={slurY - 6} x2={x2} y2={slurY + 3} stroke={stroke} strokeWidth={1.2} />
+      )}
 
       {/* Elision dot at nominal bar position when phrase overlaps previous */}
       {hasOverlap && (
@@ -480,6 +484,9 @@ export default function DiagramCanvas({
   // Set of bars that have a time signature — used to suppress bar number labels
   const timeSigBarSet = useMemo(() => new Set(timeSignatures.map(ts => ts.bar)), [timeSignatures]);
 
+  // Set of bars that have a repeat/barline — used to suppress slur end ticks
+  const repeatBarSet = useMemo(() => new Set(repeats.map(r => r.bar)), [repeats]);
+
   // Set of all phrase start bars — used to determine boundary vs mid-phrase placement
   const boundaryBars = useMemo(() => {
     const s = new Set();
@@ -618,6 +625,8 @@ export default function DiagramCanvas({
                   editMode={editMode}
                   hasMarkAtBar={hasMarkHere}
                   hideBarNum={timeSigBarSet.has(phrase.startBar)}
+                  hideStartTick={repeatBarSet.has(phrase.startBar)}
+                  hideEndTick={repeatBarSet.has(endBar)}
                   onClick={() => onSelectPhrase(phrase.phraseIndex === selectedPhraseIndex ? null : phrase.phraseIndex)}
                   onStartClick={() => onSlurStartClick(phrase.startBar)}
                 />
@@ -702,35 +711,40 @@ export default function DiagramCanvas({
           const pos = getBarPos(rp.bar);
           if (!pos) return null;
           const x = pos.x;
-          const top = pos.slurY - 28;   // span from above the slur arc
-          const bot = pos.slurY + 10;   // to just below
+          const top = pos.slurY - 28;
+          const bot = pos.slurY + 10;
           const h = bot - top;
           const f = '#1a1a1a';
+          // Gap between line centres: thick line is 3.5px wide (half = 1.75),
+          // thin is 1px (half = 0.5). To get ~1.5px visible gap: 1.75 + 1.5 + 0.5 = 3.75 → use 4px.
+          const sep = 4;
           if (rp.type === 'start') {
+            // thin | thick  ·· (dots to the right)
             return (
               <g key={rp.id}>
-                <line x1={x} y1={top} x2={x} y2={bot} stroke={f} strokeWidth={1} />
-                <line x1={x + 2} y1={top} x2={x + 2} y2={bot} stroke={f} strokeWidth={3.5} />
-                <circle cx={x + 7} cy={top + h * 0.35} r={1.8} fill={f} />
-                <circle cx={x + 7} cy={top + h * 0.65} r={1.8} fill={f} />
+                <line x1={x}       y1={top} x2={x}       y2={bot} stroke={f} strokeWidth={1} />
+                <line x1={x + sep} y1={top} x2={x + sep} y2={bot} stroke={f} strokeWidth={3.5} />
+                <circle cx={x + sep + 5.5} cy={top + h * 0.35} r={1.8} fill={f} />
+                <circle cx={x + sep + 5.5} cy={top + h * 0.65} r={1.8} fill={f} />
               </g>
             );
           }
           if (rp.type === 'end') {
+            // ·· (dots to the left) thick | thin
             return (
               <g key={rp.id}>
-                <circle cx={x - 7} cy={top + h * 0.35} r={1.8} fill={f} />
-                <circle cx={x - 7} cy={top + h * 0.65} r={1.8} fill={f} />
-                <line x1={x - 2} y1={top} x2={x - 2} y2={bot} stroke={f} strokeWidth={3.5} />
-                <line x1={x} y1={top} x2={x} y2={bot} stroke={f} strokeWidth={1} />
+                <circle cx={x - sep - 5.5} cy={top + h * 0.35} r={1.8} fill={f} />
+                <circle cx={x - sep - 5.5} cy={top + h * 0.65} r={1.8} fill={f} />
+                <line x1={x - sep} y1={top} x2={x - sep} y2={bot} stroke={f} strokeWidth={3.5} />
+                <line x1={x}       y1={top} x2={x}       y2={bot} stroke={f} strokeWidth={1} />
               </g>
             );
           }
-          // final barline
+          // final barline: thin | thick
           return (
             <g key={rp.id}>
-              <line x1={x - 2} y1={top} x2={x - 2} y2={bot} stroke={f} strokeWidth={1} />
-              <line x1={x + 1} y1={top} x2={x + 1} y2={bot} stroke={f} strokeWidth={3.5} />
+              <line x1={x - sep / 2} y1={top} x2={x - sep / 2} y2={bot} stroke={f} strokeWidth={1} />
+              <line x1={x + sep / 2} y1={top} x2={x + sep / 2} y2={bot} stroke={f} strokeWidth={3.5} />
             </g>
           );
         })}
@@ -740,18 +754,18 @@ export default function DiagramCanvas({
           const pos = getBarPos(fm.bar);
           if (!pos) return null;
           const cx = pos.x;
-          const cy = pos.slurY - 36;  // above the arc
+          const cy = pos.slurY - 36;  // baseline of the fermata (dot sits here)
           const r = 7;
           const f = '#1a1a1a';
           return (
             <g key={fm.id}>
-              {/* Semicircle arc (open downward = pause sign) */}
+              {/* Dome arc: sweep=0 (CCW) goes upward from left to right endpoint */}
               <path
-                d={`M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${cx + r} ${cy}`}
+                d={`M ${cx - r} ${cy} A ${r} ${r} 0 0 0 ${cx + r} ${cy}`}
                 stroke={f} strokeWidth={1.2} fill="none"
               />
-              {/* Dot */}
-              <circle cx={cx} cy={cy + 3.5} r={1.8} fill={f} />
+              {/* Dot centred on the baseline — level with the arc endpoints */}
+              <circle cx={cx} cy={cy} r={1.8} fill={f} />
             </g>
           );
         })}
