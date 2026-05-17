@@ -47,6 +47,8 @@ export default function Toolbar({
   onShowHelp,
   onUndo,
   onRedo,
+  canUndo,
+  canRedo,
   onExportJSON,
   onExportSVG,
   onExportPNG,
@@ -83,8 +85,8 @@ export default function Toolbar({
       </button>
       <button className="btn" onClick={onShowHelp} title="How to use Archform">?</button>
       <div className="toolbar-sep" />
-      <button className="btn toolbar-icon-btn" onClick={onUndo} title="Undo (⌘Z)">↩</button>
-      <button className="btn toolbar-icon-btn" onClick={onRedo} title="Redo (⌘⇧Z)">↪</button>
+      <button className="btn toolbar-icon-btn" onClick={onUndo} disabled={!canUndo} title="Undo (⌘Z)">↩</button>
+      <button className="btn toolbar-icon-btn" onClick={onRedo} disabled={!canRedo} title="Redo (⌘⇧Z)">↪</button>
       <div className="toolbar-sep" />
       <div className="toolbar-meta">
         <input

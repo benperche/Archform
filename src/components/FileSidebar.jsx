@@ -5,6 +5,7 @@ export default function FileSidebar({
   onNew,
   onSwitch,
   onDelete,
+  onDuplicate,
   onAddFolder,
   onDeleteFolder,
   onRenameFolder,
@@ -119,13 +120,12 @@ export default function FileSidebar({
       onClick={() => { if (file.id !== currentId) onSwitch(file.id); }}
     >
       <span className="sb-file-name">{file.name}</span>
-      {files.length > 1 && (
-        <button
-          className="sb-file-delete"
-          title="Delete"
-          onClick={e => { e.stopPropagation(); onDelete(file.id); }}
-        >✕</button>
-      )}
+      <div className="sb-file-actions">
+        <button className="sb-file-action" title="Duplicate" onClick={e => { e.stopPropagation(); onDuplicate(file.id); }}>⎘</button>
+        {files.length > 1 && (
+          <button className="sb-file-action sb-file-delete" title="Delete" onClick={e => { e.stopPropagation(); onDelete(file.id); }}>✕</button>
+        )}
+      </div>
     </div>
   );
 

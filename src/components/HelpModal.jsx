@@ -1,3 +1,5 @@
+import { NoteGlyphPreview } from './NoteGlyphs';
+
 export default function HelpModal({ onClose }) {
   return (
     <div className="help-overlay" onClick={onClose}>
@@ -82,22 +84,22 @@ export default function HelpModal({ onClose }) {
               You can include note symbols in label text using shorthand codes:
             </p>
             <div className="help-note-table">
-              <div className="help-note-row"><code>w</code><span>whole note (semibreve)</span></div>
-              <div className="help-note-row"><code>h</code><span>half note (minim)</span></div>
-              <div className="help-note-row"><code>q</code><span>quarter note (crotchet)</span></div>
-              <div className="help-note-row"><code>e</code><span>eighth note (quaver)</span></div>
-              <div className="help-note-row"><code>s</code><span>sixteenth note (semiquaver)</span></div>
-              <div className="help-note-row"><code>ee</code><span>two beamed eighths</span></div>
-              <div className="help-note-row"><code>ss / sss / ssss</code><span>two / three / four beamed sixteenths</span></div>
+              <div className="help-note-row"><NoteGlyphPreview type="w" /><code>w</code><span>whole note (semibreve)</span></div>
+              <div className="help-note-row"><NoteGlyphPreview type="h" /><code>h</code><span>half note (minim)</span></div>
+              <div className="help-note-row"><NoteGlyphPreview type="q" /><code>q</code><span>quarter note (crotchet)</span></div>
+              <div className="help-note-row"><NoteGlyphPreview type="e" /><code>e</code><span>eighth note (quaver)</span></div>
+              <div className="help-note-row"><NoteGlyphPreview type="s" /><code>s</code><span>sixteenth note (semiquaver)</span></div>
+              <div className="help-note-row"><NoteGlyphPreview type="ee" /><code>ee</code><span>two beamed eighths</span></div>
+              <div className="help-note-row"><NoteGlyphPreview type="ss" /><code>ss / sss / ssss</code><span>two / three / four beamed sixteenths</span></div>
             </div>
             <p>
-              Triplet groups show three notes with a <em>3</em> bracket above:
+              Triplet groups show three notes with a <em>3</em> bracket below:
             </p>
             <div className="help-note-table">
-              <div className="help-note-row"><code>th</code><span>triplet halves</span></div>
-              <div className="help-note-row"><code>tq</code><span>triplet quarters</span></div>
-              <div className="help-note-row"><code>te</code><span>triplet eighths</span></div>
-              <div className="help-note-row"><code>ts</code><span>triplet sixteenths</span></div>
+              <div className="help-note-row"><NoteGlyphPreview type="th" /><code>th</code><span>triplet halves</span></div>
+              <div className="help-note-row"><NoteGlyphPreview type="tq" /><code>tq</code><span>triplet quarters</span></div>
+              <div className="help-note-row"><NoteGlyphPreview type="te" /><code>te</code><span>triplet eighths</span></div>
+              <div className="help-note-row"><NoteGlyphPreview type="ts" /><code>ts</code><span>triplet sixteenths</span></div>
             </div>
             <p>Example: <code>te te q 1st Theme</code></p>
           </section>

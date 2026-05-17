@@ -136,6 +136,9 @@ export default function LabelPanel({
                 onKeyDown={handleKey} placeholder="Clarinet" />
             </div>
           </div>
+          <p className="panel-glyph-hint">
+            Tip: type <code>q</code>, <code>h</code>, <code>e</code> etc. in the text to insert note symbols — see ? for full list.
+          </p>
           <button className="btn btn-primary panel-add-btn" onClick={handleAdd} disabled={!canAdd}>
             Add label
           </button>

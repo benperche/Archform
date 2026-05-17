@@ -252,6 +252,29 @@ body {
   height: auto;
 }
 
+/* ── Zoom controls ───────────────────────────────────────────── */
+
+.zoom-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+
+.zoom-btn {
+  font-size: 14px;
+  padding: 2px 8px;
+  line-height: 1.4;
+  min-width: 28px;
+}
+
+.zoom-label {
+  font-size: 12px;
+  color: var(--subtle);
+  min-width: 36px;
+  text-align: center;
+}
+
 /* ── Quick entry ─────────────────────────────────────────────── */
 
 /* ── Bottom area (phrase entry + panel buttons) ─────────────── */
@@ -444,6 +467,20 @@ body {
   width: 100%;
   padding: 7px;
   margin-top: 4px;
+}
+
+.panel-glyph-hint {
+  font-size: 10px;
+  color: #aaa;
+  margin-top: 5px;
+  line-height: 1.4;
+}
+.panel-glyph-hint code {
+  font-size: 10px;
+  background: #f0ede8;
+  border-radius: 2px;
+  padding: 0 2px;
+  color: var(--text);
 }
 
 .panel-list {
@@ -1221,6 +1258,30 @@ body {
   font-weight: 500;
 }
 
+.sb-file-actions {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  opacity: 0;
+  transition: opacity 0.1s;
+  flex-shrink: 0;
+}
+
+.sb-file:hover .sb-file-actions { opacity: 1; }
+.sb-file--active .sb-file-actions { opacity: 1; }
+
+.sb-file-action {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 10px;
+  color: #bbb;
+  padding: 2px 3px;
+  border-radius: 3px;
+  line-height: 1;
+}
+.sb-file-action:hover { color: var(--text); background: #ece9e3; }
+
 .sb-file-delete {
   background: none;
   border: none;
@@ -1231,8 +1292,6 @@ body {
   border-radius: 3px;
   flex-shrink: 0;
   line-height: 1;
-  opacity: 0;
-  transition: opacity 0.1s;
 }
 .sb-file-delete:hover { color: #e53e3e; background: #fff5f5; }
 
@@ -1285,10 +1344,12 @@ svg g[style*="ns-resize"]:hover text {
 /* ── Print ───────────────────────────────────────────────────── */
 
 @media print {
-  .toolbar, .quick-entry, .side-panel, .file-sidebar { display: none !important; }
+  .toolbar, .quick-entry, .side-panel, .file-sidebar,
+  .bottom-panel-buttons, .zoom-controls { display: none !important; }
   body { background: white; }
   .app { height: auto; overflow: visible; }
   .content-area { overflow: visible; }
+  .bottom-area { border-top: none; }
   .diagram-area { padding: 0; overflow: visible; }
   .canvas-container { box-shadow: none; border-radius: 0; }
 

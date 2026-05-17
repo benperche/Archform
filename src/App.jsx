@@ -137,17 +137,27 @@ export default function App() {
     const saved = localStorage.getItem('pd_sidebar_open');
     return saved === null ? true : saved === '1';
   });
+  const [zoom, setZoom] = useState(100);
 
   // ── History (undo/redo) ─────────────────────────────────────
   const stateRef = useRef(state);
   useEffect(() => { stateRef.current = state; }, [state]);
 
   const historyRef = useRef({ stack: [], index: -1 });
+  const [canUndo, setCanUndo] = useState(false);
+  const [canRedo, setCanRedo] = useState(false);
+
+  const syncHistoryMeta = useCallback(() => {
+    const h = historyRef.current;
+    setCanUndo(h.index > 0);
+    setCanRedo(h.index < h.stack.length - 1);
+  }, []);
 
   // Capture initial snapshot once mounted
   useEffect(() => {
     const snap = getDiagramSnapshot(stateRef.current);
     historyRef.current = { stack: [snap], index: 0 };
+    syncHistoryMeta();
   }, []); // eslint-disable-line
 
   const recordHistory = useCallback(() => {
@@ -156,7 +166,8 @@ export default function App() {
     if (h.index >= 0 && JSON.stringify(h.stack[h.index]) === JSON.stringify(snap)) return;
     const newStack = [...h.stack.slice(0, h.index + 1), snap].slice(-50);
     historyRef.current = { stack: newStack, index: newStack.length - 1 };
-  }, []);
+    syncHistoryMeta();
+  }, [syncHistoryMeta]);
 
   const undo = useCallback(() => {
     const h = historyRef.current;
@@ -164,7 +175,8 @@ export default function App() {
     const newIndex = h.index - 1;
     historyRef.current = { ...h, index: newIndex };
     setState(s => ({ ...s, ...h.stack[newIndex] }));
-  }, []);
+    syncHistoryMeta();
+  }, [syncHistoryMeta]);
 
   const redo = useCallback(() => {
     const h = historyRef.current;
@@ -172,7 +184,8 @@ export default function App() {
     const newIndex = h.index + 1;
     historyRef.current = { ...h, index: newIndex };
     setState(s => ({ ...s, ...h.stack[newIndex] }));
-  }, []);
+    syncHistoryMeta();
+  }, [syncHistoryMeta]);
 
   // Debounce history recording for text field changes
   const textHistoryTimer = useRef(null);
@@ -433,6 +446,24 @@ export default function App() {
     });
   }, []);
 
+  const handleDuplicateFile = useCallback((id) => {
+    const sourceData = loadFile(id) ?? defaultDiagramState;
+    const sourceFile = fileIndex.files.find(f => f.id === id);
+    const newId = genId();
+    const baseName = sourceFile?.name ?? 'Untitled';
+    const dupName = `${baseName} (copy)`;
+    saveFile(newId, sourceData);
+    setFileIndex(prev => {
+      const idx = prev.files.findIndex(f => f.id === id);
+      const newFile = { id: newId, name: dupName, updatedAt: Date.now(), folderId: sourceFile?.folderId ?? null };
+      const files = [...prev.files];
+      files.splice(idx + 1, 0, newFile);
+      const updated = { ...prev, files };
+      saveIndex(updated);
+      return updated;
+    });
+  }, [fileIndex.files]);
+
   // ── Diagram handlers ────────────────────────────────────────
   const handleSlurStartClick = useCallback((bar) => {
     recordHistory();
@@ -585,6 +616,13 @@ export default function App() {
     if (!svg) return null;
     const clone = svg.cloneNode(true);
     clone.querySelectorAll('[data-no-export]').forEach(el => el.remove());
+    // Add <title> metadata so the file is identifiable in file managers / screen readers
+    const titleParts = [state.title, state.composer].filter(Boolean);
+    if (titleParts.length) {
+      const titleEl = document.createElementNS('http://www.w3.org/2000/svg', 'title');
+      titleEl.textContent = titleParts.join(' — ');
+      clone.insertBefore(titleEl, clone.firstChild);
+    }
     return clone;
   };
 
@@ -680,6 +718,8 @@ export default function App() {
         onShowHelp={() => setShowHelp(true)}
         onUndo={undo}
         onRedo={redo}
+        canUndo={canUndo}
+        canRedo={canRedo}
         onExportJSON={handleExportJSON}
         onExportSVG={handleExportSVG}
         onExportPNG={handleExportPNG}
@@ -697,6 +737,7 @@ export default function App() {
             onNew={handleNewFile}
             onSwitch={handleSwitchFile}
             onDelete={handleDeleteFile}
+            onDuplicate={handleDuplicateFile}
             onAddFolder={handleAddFolder}
             onDeleteFolder={handleDeleteFolder}
             onRenameFolder={handleRenameFolder}
@@ -705,6 +746,13 @@ export default function App() {
         )}
         <div className="left-side">
           <div className="diagram-area">
+            <div className="zoom-controls">
+              <button className="btn zoom-btn" onClick={() => setZoom(z => Math.max(50, z - 10))} title="Zoom out">−</button>
+              <span className="zoom-label">{zoom}%</span>
+              <button className="btn zoom-btn" onClick={() => setZoom(z => Math.min(200, z + 10))} title="Zoom in">+</button>
+              {zoom !== 100 && <button className="btn zoom-btn" onClick={() => setZoom(100)} title="Reset zoom">↺</button>}
+            </div>
+            <div style={{ width: `${zoom}%`, minWidth: zoom < 100 ? `${zoom}%` : undefined }}>
             <DiagramCanvas
               layout={layout}
               title={state.title}
@@ -743,6 +791,7 @@ export default function App() {
                 onAddSectionHere={handleAddSectionHere}
               />
             )}
+            </div>{/* end zoom wrapper */}
           </div>
 
           <div className="bottom-area">
