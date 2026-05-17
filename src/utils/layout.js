@@ -39,12 +39,14 @@ function tokenizeLine(line) {
   const tokens = [];
   let i = 0;
   while (i < line.length) {
-    if (/[\s,]/.test(line[i])) { i++; continue; }
+    if (/[\s,)]/.test(line[i])) { i++; continue; } // skip whitespace, commas, stray close-parens
     let j = i, depth = 0;
     while (j < line.length) {
       if (line[j] === '(') depth++;
-      else if (line[j] === ')') { depth--; if (depth < 0) break; }
-      else if (/[\s,]/.test(line[j]) && depth === 0) break;
+      else if (line[j] === ')') {
+        if (depth === 0) break; // stray close-paren ends the token
+        depth--;
+      } else if (/[\s,]/.test(line[j]) && depth === 0) break;
       j++;
     }
     if (j > i) tokens.push({ token: line.slice(i, j), start: i, end: j });

@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef, useDeferredValue } from 'react';
 import DiagramCanvas from './components/DiagramCanvas';
 import QuickEntry from './components/QuickEntry';
 import Toolbar from './components/Toolbar';
@@ -260,9 +260,12 @@ export default function App() {
     return () => window.removeEventListener('keydown', handler);
   }, [state.editMode, undo, redo]);
 
+  // Defer the text so rapid keystrokes don't block the main thread with
+  // expensive parse+layout+SVG-render cycles on every character.
+  const deferredText = useDeferredValue(state.quickEntryText);
   const { phrases, lineBreakIndices } = useMemo(
-    () => parseQuickEntry(state.quickEntryText),
-    [state.quickEntryText]
+    () => parseQuickEntry(deferredText),
+    [deferredText]
   );
 
   const layout = useMemo(
