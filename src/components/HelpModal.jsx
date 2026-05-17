@@ -1,4 +1,4 @@
-import { NoteGlyphPreview } from './NoteGlyphs';
+import { NoteGlyphPreview, FermataPreview } from './NoteGlyphs';
 
 export default function HelpModal({ onClose }) {
   return (
@@ -142,7 +142,7 @@ export default function HelpModal({ onClose }) {
           <section className="help-section">
             <h3>7 — Add fermatas</h3>
             <p>
-              Click <strong>Fermatas</strong> to place a pause symbol (&#119136;) above the slur arc
+              Click <strong>Fermatas</strong> to place a pause symbol (<FermataPreview />) above the slur arc
               at any bar position. Click a fermata on the diagram to edit or remove it.
             </p>
           </section>

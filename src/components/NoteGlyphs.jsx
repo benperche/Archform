@@ -121,6 +121,20 @@ export function NoteText({ text, x, y, fontSize, fill, fontStyle, fontWeight, te
   );
 }
 
+// Standalone preview SVG of a fermata — used in help modal.
+// Matches the arc+dot drawn by FermataGlyph in DiagramCanvas.
+export function FermataPreview() {
+  const r = 7, cx = 11, cy = 10;
+  return (
+    <svg width={22} height={18} viewBox="0 0 22 18"
+      style={{ display: 'inline-block', verticalAlign: 'middle' }}>
+      <path d={`M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${cx + r} ${cy}`}
+        stroke="#1a1a1a" strokeWidth={1.2} fill="none" />
+      <circle cx={cx} cy={cy} r={1.8} fill="#1a1a1a" />
+    </svg>
+  );
+}
+
 // Standalone preview SVG for a single note type — used in help modal.
 // height/width chosen to comfortably contain the tallest glyph.
 export function NoteGlyphPreview({ type }) {
