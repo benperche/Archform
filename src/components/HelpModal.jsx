@@ -140,9 +140,9 @@ export default function HelpModal({ onClose }) {
           </section>
 
           <section className="help-section">
-            <h3>7 — Add fermatas &amp; caesuras</h3>
+            <h3>7 — Add fermatas &amp; breaks</h3>
             <p>
-              Click <strong>Fermatas</strong> to place a pause marking above the slur arc at any bar
+              Click <strong>Fermatas &amp; breaks</strong> to place a pause marking above the slur arc at any bar
               position. Two types are available:
             </p>
             <ul>

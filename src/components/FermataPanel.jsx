@@ -73,7 +73,7 @@ export default function FermataPanel({
   return (
     <div className="side-panel">
       <div className="side-panel-header">
-        <span>Fermatas</span>
+        <span>Fermatas &amp; breaks</span>
         <button className="panel-close" onClick={onClose}>✕</button>
       </div>
 

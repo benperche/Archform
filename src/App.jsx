@@ -892,7 +892,7 @@ export default function App() {
               <button className={`btn bottom-btn ${state.activePanel === 'repeats' ? 'btn-active' : ''}`}
                 onClick={() => togglePanel('repeats')}>Barlines & repeats</button>
               <button className={`btn bottom-btn ${state.activePanel === 'fermatas' ? 'btn-active' : ''}`}
-                onClick={() => togglePanel('fermatas')}>Fermatas</button>
+                onClick={() => togglePanel('fermatas')}>Fermatas &amp; breaks</button>
             </div>
           </div>
         </div>
