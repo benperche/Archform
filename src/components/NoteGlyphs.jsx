@@ -135,6 +135,19 @@ export function FermataPreview() {
   );
 }
 
+// Standalone preview SVG of a breath mark — used in help modal.
+// Matches the curved comma drawn by FermataGlyph in DiagramCanvas.
+export function BreathPreview() {
+  const cx = 11, cy = 9;
+  return (
+    <svg width={22} height={18} viewBox="0 0 22 18"
+      style={{ display: 'inline-block', verticalAlign: 'middle' }}>
+      <path d={`M ${cx - 1} ${cy + 4} Q ${cx + 5} ${cy + 1} ${cx + 2} ${cy - 6}`}
+        stroke="#1a1a1a" strokeWidth={1.3} fill="none" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 // Standalone preview SVG of a caesura — used in help modal.
 // Matches the two forward-slash lines drawn by FermataGlyph in DiagramCanvas.
 export function CaesuraPreview() {

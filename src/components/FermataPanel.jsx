@@ -5,6 +5,7 @@ import { barWarning, groupItems, SystemDivider, formatBar } from '../utils/panel
 const TYPE_OPTS = [
   { value: 'fermata', label: 'Fermata' },
   { value: 'caesura', label: 'Caesura //' },
+  { value: 'breath',  label: "Breath mark '" },
 ];
 
 function typeLabel(type) {
@@ -100,7 +101,7 @@ export default function FermataPanel({
             <p className="panel-bar-warning">⚠ {barWarning(bar, layoutRows)}</p>
           )}
           <button className="btn btn-primary panel-add-btn" onClick={handleAdd} disabled={!canAdd}>
-            Add {type === 'caesura' ? 'caesura' : 'fermata'}
+            Add {type === 'caesura' ? 'caesura' : type === 'breath' ? 'breath mark' : 'fermata'}
           </button>
         </div>
 

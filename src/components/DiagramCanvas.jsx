@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect, useCallback } from 'react';
 import { NoteGlyph, NoteText } from './NoteGlyphs';
-import { barToPosition, formatBar, formatLength, xToNearestPhrase, CANVAS_WIDTH, PADDING } from '../utils/layout';
+import { barToPosition, barToPositionEnd, formatBar, formatLength, xToNearestPhrase, CANVAS_WIDTH, PADDING } from '../utils/layout';
 
 // Y on a cubic bezier with control-point y values: slurY, cpY, cpY, slurY
 function bezierY(t, slurY, cpY) {
@@ -361,7 +361,7 @@ function RepeatBarlineItem({ rp, x, slurY, isActive, onClick }) {
 function FermataGlyph({ fm, cx, cy, isActive, onClick }) {
   const [hovered, setHovered] = useState(false);
   const f = isActive ? '#2563eb' : (hovered && onClick ? '#4878cf' : '#1a1a1a');
-  const isCaesura = fm.type === 'caesura';
+  const type = fm.type ?? 'fermata';
 
   // Fermata geometry
   const r = 7;
@@ -375,7 +375,7 @@ function FermataGlyph({ fm, cx, cy, isActive, onClick }) {
       onMouseEnter={onClick ? () => setHovered(true) : undefined}
       onMouseLeave={onClick ? () => setHovered(false) : undefined}
     >
-      {isCaesura ? (<>
+      {type === 'caesura' ? (<>
         <rect x={cx - gap - slashDx - 4} y={cy - slashH / 2 - 4}
           width={gap * 2 + slashDx * 2 + 8} height={slashH + 8} fill="transparent" />
         <line x1={cx - gap / 2 - slashDx} y1={cy + slashH / 2}
@@ -384,6 +384,11 @@ function FermataGlyph({ fm, cx, cy, isActive, onClick }) {
         <line x1={cx + gap / 2 - slashDx} y1={cy + slashH / 2}
               x2={cx + gap / 2 + slashDx} y2={cy - slashH / 2}
               stroke={f} strokeWidth={1.5} strokeLinecap="round" />
+      </>) : type === 'breath' ? (<>
+        {/* Breath mark: small curved comma/apostrophe */}
+        <rect x={cx - 8} y={cy - 9} width={16} height={16} fill="transparent" />
+        <path d={`M ${cx - 1} ${cy + 4} Q ${cx + 5} ${cy + 1} ${cx + 2} ${cy - 6}`}
+          stroke={f} strokeWidth={1.3} fill="none" strokeLinecap="round" />
       </>) : (<>
         <rect x={cx - r - 4} y={cy - r - 4} width={(r + 4) * 2} height={r + 10} fill="transparent" />
         <path d={`M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${cx + r} ${cy}`}
@@ -727,7 +732,9 @@ export default function DiagramCanvas({
 
         {/* Fermatas — pause symbol above the slur arc */}
         {fermatas.map(fm => {
-          const pos = getBarPos(fm.bar);
+          // Caesuras and breath marks attach to the previous system at row boundaries.
+          const useEndPos = fm.type === 'caesura' || fm.type === 'breath';
+          const pos = useEndPos ? barToPositionEnd(fm.bar, rows) : getBarPos(fm.bar);
           if (!pos) return null;
           const clickable = !barPickMode && !editMode && !!onFermataClick;
           return (

@@ -1,4 +1,4 @@
-import { NoteGlyphPreview, FermataPreview, CaesuraPreview } from './NoteGlyphs';
+import { NoteGlyphPreview, FermataPreview, CaesuraPreview, BreathPreview } from './NoteGlyphs';
 
 export default function HelpModal({ onClose }) {
   return (
@@ -147,10 +147,14 @@ export default function HelpModal({ onClose }) {
             </p>
             <ul>
               <li><FermataPreview /> <strong>Fermata</strong> — the classic arc-and-dot pause symbol.</li>
-              <li><CaesuraPreview /> <strong>Caesura</strong> — two diagonal lines (//) indicating a
-              brief break or breath mark.</li>
+              <li><CaesuraPreview /> <strong>Caesura</strong> — two diagonal lines (//) indicating a hard break.</li>
+              <li><BreathPreview /> <strong>Breath mark</strong> — a small comma indicating a breath or slight pause.</li>
             </ul>
-            <p>Click a fermata or caesura on the diagram to edit or remove it.</p>
+            <p>
+              Caesuras and breath marks placed at a system boundary attach to the end of the
+              preceding row rather than the start of the next, since they relate to the music before the break.
+            </p>
+            <p>Click any of these markings on the diagram to edit or remove it.</p>
           </section>
 
           <section className="help-section">

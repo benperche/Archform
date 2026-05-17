@@ -272,6 +272,21 @@ export function xToNearestPhrase(svgX, rows, svgY) {
   return Math.round(nearest * 2) / 2;
 }
 
+// Like barToPosition, but resolves bars that fall exactly at a row boundary
+// to the END of the preceding row instead of the start of the next one.
+// Used for caesuras and breath marks, which relate to the music before the break.
+export function barToPositionEnd(bar, rows) {
+  for (let i = 0; i < rows.length - 1; i++) {
+    const row = rows[i];
+    const last = row.phrases[row.phrases.length - 1];
+    const rowEndBar = last.startBar + last.length;
+    if (Math.abs(bar - rowEndBar) < 0.001) {
+      return { x: row.rowEndX, slurY: row.slurY, rowIndex: row.rowIndex };
+    }
+  }
+  return barToPosition(bar, rows);
+}
+
 // Returns { firstBar, lastBar } for the current layout, or null if empty.
 export function getBarRange(rows) {
   if (!rows || rows.length === 0) return null;
