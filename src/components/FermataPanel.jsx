@@ -1,52 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { TrashIcon } from './Icons';
-
-const fmtBar = n => (Number.isInteger(n) ? String(n) : n.toFixed(1));
-
-function barWarning(barStr, rows) {
-  const b = parseFloat(barStr);
-  if (isNaN(b) || !rows || rows.length === 0) return null;
-  const firstBar = rows[0].phrases[0].startBar;
-  const lastRow = rows[rows.length - 1];
-  const lastPhrase = lastRow.phrases[lastRow.phrases.length - 1];
-  const lastBar = lastPhrase.startBar + lastPhrase.length;
-  if (b < firstBar || b > lastBar) return `Bar ${b} is outside the diagram (${fmtBar(firstBar)}–${fmtBar(lastBar)})`;
-  return null;
-}
-
-function rowForBar(bar, rows) {
-  for (let i = 0; i < rows.length; i++) {
-    const row = rows[i];
-    const first = row.phrases[0].startBar;
-    const last = row.phrases[row.phrases.length - 1];
-    const end = last.startBar + last.length;
-    const isLast = i === rows.length - 1;
-    if (bar >= first && (isLast ? bar <= end : bar < end)) return row;
-  }
-  return rows[rows.length - 1] ?? null;
-}
-
-function groupItems(items, barKey, rows) {
-  if (!rows || rows.length <= 1) return null;
-  const map = new Map(rows.map(r => [r.rowIndex, { row: r, items: [] }]));
-  for (const item of items) {
-    const row = rowForBar(item[barKey], rows);
-    if (row) map.get(row.rowIndex)?.items.push(item);
-  }
-  return [...map.values()].filter(g => g.items.length > 0);
-}
-
-function SystemDivider({ row, first }) {
-  const firstBar = row.phrases[0].startBar;
-  const last = row.phrases[row.phrases.length - 1];
-  const lastBar = last.startBar + last.length;
-  return (
-    <div className="panel-system-divider" style={first ? { borderTop: 'none', marginTop: 0, paddingTop: 0 } : {}}>
-      <span>System {row.rowIndex + 1}</span>
-      <span className="panel-system-bars">bars {fmtBar(firstBar)}–{fmtBar(lastBar)}</span>
-    </div>
-  );
-}
+import { barWarning, groupItems, SystemDivider, formatBar } from '../utils/panelUtils';
 
 export default function FermataPanel({
   onClose,
@@ -153,7 +107,7 @@ export default function FermataPanel({
                 <div key={f.id} className="panel-item panel-item--clickable" onClick={() => startEdit(f)}>
                   <div className="panel-item-info">
                     <span className="panel-item-label">𝄐 Fermata</span>
-                    <span className="panel-item-meta">bar {fmtBar(f.bar)}</span>
+                    <span className="panel-item-meta">bar {formatBar(f.bar)}</span>
                   </div>
                   <button className="item-delete" title="Delete" onClick={e => { e.stopPropagation(); onRemove(f.id); }}><TrashIcon /></button>
                 </div>

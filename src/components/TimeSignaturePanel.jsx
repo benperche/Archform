@@ -1,17 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-
-const fmtBar = n => (Number.isInteger(n) ? String(n) : n.toFixed(1));
-
-function barWarning(barStr, rows) {
-  const b = parseFloat(barStr);
-  if (isNaN(b) || !rows || rows.length === 0) return null;
-  const firstBar = rows[0].phrases[0].startBar;
-  const lastRow = rows[rows.length - 1];
-  const lastPhrase = lastRow.phrases[lastRow.phrases.length - 1];
-  const lastBar = lastPhrase.startBar + lastPhrase.length;
-  if (b < firstBar || b > lastBar) return `Bar ${b} is outside the diagram (${fmtBar(firstBar)}–${fmtBar(lastBar)})`;
-  return null;
-}
+import { barWarning } from '../utils/panelUtils';
 
 const COMMON = [
   [4, 4], [3, 4], [2, 4], [2, 2],
