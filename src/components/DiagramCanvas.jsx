@@ -797,6 +797,28 @@ export default function DiagramCanvas({
           );
         })}
 
+        {/* "Created with Archform" watermark — bottom centre, always visible */}
+        <g
+          transform={`translate(${W / 2}, ${totalHeight - 20})`}
+          style={{ pointerEvents: 'none', userSelect: 'none' }}
+        >
+          {/* Favicon logo: slur arch + ticks, no background, scaled to ~13 px */}
+          <g transform="translate(-74, -11) scale(0.44)">
+            <path d="M 4 24 C 4 9 28 9 28 24"
+              fill="none" stroke="#ccc" strokeWidth="2.5" strokeLinecap="round" />
+            <line x1="4" y1="24" x2="4" y2="19" stroke="#ccc" strokeWidth="2" strokeLinecap="round" />
+            <line x1="28" y1="24" x2="28" y2="19" stroke="#ccc" strokeWidth="2" strokeLinecap="round" />
+          </g>
+          <text x={-58} y={0}
+            fontSize={11}
+            fontFamily="Georgia, 'Times New Roman', serif"
+            fill="#ccc"
+            letterSpacing={0.3}
+          >
+            Created with Archform
+          </text>
+        </g>
+
         {/* Empty state */}
         {rows.length === 0 && (
           <g>
