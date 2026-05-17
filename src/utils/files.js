@@ -14,7 +14,11 @@ export function genId() {
 export function loadIndex() {
   try {
     const raw = localStorage.getItem(INDEX_KEY);
-    return raw ? JSON.parse(raw) : null;
+    if (!raw) return null;
+    const idx = JSON.parse(raw);
+    // Backward compat: ensure folders array exists
+    if (!idx.folders) idx.folders = [];
+    return idx;
   } catch { return null; }
 }
 
@@ -45,7 +49,7 @@ export function migrateLegacy() {
     const data = JSON.parse(raw);
     const id = genId();
     const name = fileName(data.title, data.composer);
-    const index = { currentId: id, files: [{ id, name, updatedAt: Date.now() }] };
+    const index = { currentId: id, files: [{ id, name, updatedAt: Date.now(), folderId: null }], folders: [] };
     saveIndex(index);
     saveFile(id, data);
     localStorage.removeItem(LEGACY_KEY);

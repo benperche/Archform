@@ -936,6 +936,246 @@ body {
   background: #fee2e2;
 }
 
+/* ── File sidebar ────────────────────────────────────────────── */
+
+.file-sidebar {
+  width: 210px;
+  flex-shrink: 0;
+  background: #faf9f7;
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.sb-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px 8px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.sb-title {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.9px;
+  color: #888;
+}
+
+.sb-new-btn {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 3px 8px;
+  font-size: 11px;
+  font-family: inherit;
+  color: var(--accent);
+  cursor: pointer;
+  font-weight: 500;
+  transition: background 0.1s;
+}
+.sb-new-btn:hover { background: #eff6ff; }
+
+.sb-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 6px 0;
+}
+
+/* Folder row */
+.sb-folder {
+  border-radius: 0;
+  transition: background 0.1s;
+}
+
+.sb-folder--drag-over {
+  background: #eff6ff;
+  outline: 1px dashed #93c5fd;
+  outline-offset: -1px;
+}
+
+.sb-folder-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 8px 4px 4px;
+  cursor: default;
+}
+
+.sb-folder-toggle {
+  background: none;
+  border: none;
+  padding: 2px 4px;
+  font-size: 10px;
+  color: #aaa;
+  cursor: pointer;
+  line-height: 1;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+.sb-folder-toggle:hover { color: var(--text); background: #eee; }
+
+.sb-folder-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  user-select: none;
+}
+
+.sb-folder-name--muted {
+  color: #999;
+  font-weight: 500;
+}
+
+.sb-folder-count {
+  font-size: 10px;
+  color: #bbb;
+  font-weight: 400;
+  flex-shrink: 0;
+  margin-right: 2px;
+}
+
+.sb-folder-delete {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 10px;
+  color: transparent;
+  padding: 2px 4px;
+  border-radius: 3px;
+  flex-shrink: 0;
+  line-height: 1;
+  transition: color 0.1s;
+}
+.sb-folder-row:hover .sb-folder-delete { color: #ccc; }
+.sb-folder-delete:hover { color: #e53e3e !important; background: #fff5f5; }
+
+.sb-folder-rename {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid #93c5fd;
+  border-radius: 3px;
+  padding: 2px 5px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  color: var(--text);
+  outline: none;
+  background: white;
+}
+
+.sb-folder-files {
+  padding-left: 16px;
+}
+
+.sb-folder-files--flat {
+  padding-left: 6px;
+}
+
+.sb-folder-empty {
+  font-size: 11px;
+  color: #ccc;
+  font-style: italic;
+  padding: 5px 8px 6px;
+}
+
+/* File rows */
+.sb-file {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 8px 5px 6px;
+  border-radius: 4px;
+  margin: 1px 4px;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+.sb-file:hover { background: #f0ede8; }
+.sb-file:hover .sb-file-delete { opacity: 1; }
+
+.sb-file--active {
+  background: #eff6ff;
+}
+.sb-file--active:hover { background: #dbeafe; }
+
+.sb-file--dragging {
+  opacity: 0.45;
+}
+
+.sb-file-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sb-file--active .sb-file-name {
+  color: var(--accent);
+  font-weight: 500;
+}
+
+.sb-file-delete {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 10px;
+  color: #ccc;
+  padding: 2px 3px;
+  border-radius: 3px;
+  flex-shrink: 0;
+  line-height: 1;
+  opacity: 0;
+  transition: opacity 0.1s;
+}
+.sb-file-delete:hover { color: #e53e3e; background: #fff5f5; }
+
+/* Sidebar footer */
+.sb-footer {
+  flex-shrink: 0;
+  padding: 8px;
+  border-top: 1px solid var(--border);
+}
+
+.sb-add-folder-btn {
+  display: block;
+  width: 100%;
+  padding: 6px 8px;
+  background: none;
+  border: 1px dashed #d0cdc7;
+  border-radius: 5px;
+  font-size: 11px;
+  font-family: inherit;
+  color: #aaa;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.1s, border-color 0.1s, color 0.1s;
+}
+.sb-add-folder-btn:hover { background: #f0ede8; border-color: #bbb; color: var(--text); }
+
+.sb-new-folder-input {
+  display: block;
+  width: 100%;
+  padding: 5px 8px;
+  border: 1px solid #93c5fd;
+  border-radius: 5px;
+  font-size: 11px;
+  font-family: inherit;
+  color: var(--text);
+  outline: none;
+  background: white;
+}
+
 /* ── Row spacing handles ─────────────────────────────────────── */
 
 /* Make the grip slightly more visible on hover (SVG :hover works in modern browsers) */
@@ -949,7 +1189,7 @@ svg g[style*="ns-resize"]:hover text {
 /* ── Print ───────────────────────────────────────────────────── */
 
 @media print {
-  .toolbar, .quick-entry, .side-panel { display: none !important; }
+  .toolbar, .quick-entry, .side-panel, .file-sidebar { display: none !important; }
   body { background: white; }
   .app { height: auto; overflow: visible; }
   .content-area { overflow: visible; }

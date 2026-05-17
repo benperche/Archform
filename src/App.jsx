@@ -7,6 +7,7 @@ import AnnotationPanel from './components/AnnotationPanel';
 import HelpModal from './components/HelpModal';
 import OverlapPopover from './components/OverlapPopover';
 import TimeSignaturePanel from './components/TimeSignaturePanel';
+import FileSidebar from './components/FileSidebar';
 import { parseQuickEntry, computeLayout, CANVAS_WIDTH } from './utils/layout';
 import {
   loadIndex, saveIndex, loadFile, saveFile, deleteFile,
@@ -86,7 +87,7 @@ function getAppInit() {
       const name = fileName(data.title, data.composer);
       const diagram = { ...defaultDiagramState, ...data };
       saveFile(id, diagram);
-      const newIndex = { ...index, currentId: id, files: [...index.files, { id, name, updatedAt: Date.now() }] };
+      const newIndex = { ...index, currentId: id, files: [...index.files, { id, name, updatedAt: Date.now(), folderId: null }], folders: index.folders || [] };
       saveIndex(newIndex);
       return (_appInit = { index: newIndex, diagram });
     }
@@ -104,7 +105,7 @@ function getAppInit() {
     return _appInit;
   }
   const id = genId();
-  const newIndex = { currentId: id, files: [{ id, name: 'Untitled', updatedAt: Date.now() }] };
+  const newIndex = { currentId: id, files: [{ id, name: 'Untitled', updatedAt: Date.now(), folderId: null }], folders: [] };
   saveIndex(newIndex);
   saveFile(id, defaultDiagramState);
   _appInit = { index: newIndex, diagram: defaultDiagramState };
@@ -129,6 +130,7 @@ export default function App() {
   const [state, setState] = useState(() => ({ ...defaultState, ...getAppInit().diagram }));
   const currentIdRef = useRef(getAppInit().index.currentId);
   const [showHelp, setShowHelp] = useState(() => !localStorage.getItem(HELP_SEEN_KEY));
+  const [sidebarOpen, setSidebarOpen] = useState(true);
 
   // ── History (undo/redo) ─────────────────────────────────────
   const stateRef = useRef(state);
@@ -290,7 +292,7 @@ export default function App() {
       const updated = {
         ...prev,
         currentId: id,
-        files: [...prev.files, { id, name: 'Untitled', updatedAt: Date.now() }],
+        files: [...prev.files, { id, name: 'Untitled', updatedAt: Date.now(), folderId: null }],
       };
       saveIndex(updated);
       return updated;
@@ -324,6 +326,47 @@ export default function App() {
         setState({ ...defaultState, ...data });
       }
       const updated = { ...prev, currentId: newCurrentId, files: remaining };
+      saveIndex(updated);
+      return updated;
+    });
+  }, []);
+
+  // ── Folder handlers ─────────────────────────────────────────
+  const handleAddFolder = useCallback((name) => {
+    setFileIndex(prev => {
+      const folder = { id: genId(), name };
+      const updated = { ...prev, folders: [...(prev.folders || []), folder] };
+      saveIndex(updated);
+      return updated;
+    });
+  }, []);
+
+  const handleDeleteFolder = useCallback((id) => {
+    setFileIndex(prev => {
+      const updated = {
+        ...prev,
+        folders: prev.folders.filter(f => f.id !== id),
+        files: prev.files.map(f => f.folderId === id ? { ...f, folderId: null } : f),
+      };
+      saveIndex(updated);
+      return updated;
+    });
+  }, []);
+
+  const handleRenameFolder = useCallback((id, name) => {
+    setFileIndex(prev => {
+      const updated = { ...prev, folders: prev.folders.map(f => f.id === id ? { ...f, name } : f) };
+      saveIndex(updated);
+      return updated;
+    });
+  }, []);
+
+  const handleMoveFile = useCallback((fileId, folderId) => {
+    setFileIndex(prev => {
+      const updated = {
+        ...prev,
+        files: prev.files.map(f => f.id === fileId ? { ...f, folderId: folderId ?? null } : f),
+      };
       saveIndex(updated);
       return updated;
     });
@@ -524,10 +567,8 @@ export default function App() {
       <Toolbar
         state={state}
         setState={setState}
-        fileIndex={fileIndex}
-        onNewFile={handleNewFile}
-        onSwitchFile={handleSwitchFile}
-        onDeleteFile={handleDeleteFile}
+        sidebarOpen={sidebarOpen}
+        onToggleSidebar={() => setSidebarOpen(o => !o)}
         onShowHelp={() => setShowHelp(true)}
         onUndo={undo}
         onRedo={redo}
@@ -547,6 +588,18 @@ export default function App() {
       />
 
       <div className="main-area">
+        {sidebarOpen && (
+          <FileSidebar
+            fileIndex={fileIndex}
+            onNew={handleNewFile}
+            onSwitch={handleSwitchFile}
+            onDelete={handleDeleteFile}
+            onAddFolder={handleAddFolder}
+            onDeleteFolder={handleDeleteFolder}
+            onRenameFolder={handleRenameFolder}
+            onMoveFile={handleMoveFile}
+          />
+        )}
         <div className="left-side">
           <div className="diagram-area">
             <DiagramCanvas

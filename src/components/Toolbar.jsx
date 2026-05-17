@@ -1,5 +1,4 @@
 import { useRef, useState } from 'react';
-import FileMenu from './FileMenu';
 
 const MARK_STYLES = [
   { value: 'letters', label: 'Letters' },
@@ -41,10 +40,8 @@ function ExportMenu({ onExportJSON, onExportSVG, onExportPNG }) {
 export default function Toolbar({
   state,
   setState,
-  fileIndex,
-  onNewFile,
-  onSwitchFile,
-  onDeleteFile,
+  sidebarOpen,
+  onToggleSidebar,
   onShowHelp,
   onUndo,
   onRedo,
@@ -78,14 +75,14 @@ export default function Toolbar({
 
   return (
     <div className={`toolbar ${inMarkMode ? 'toolbar--mark-mode' : ''}`}>
-      {/* Left: file menu + help + undo/redo + title + composer */}
-      <FileMenu
-        files={fileIndex.files}
-        currentId={fileIndex.currentId}
-        onNew={onNewFile}
-        onSwitch={onSwitchFile}
-        onDelete={onDeleteFile}
-      />
+      {/* Left: sidebar toggle + help + undo/redo + title + composer */}
+      <button
+        className={`btn ${sidebarOpen ? 'btn-active' : ''}`}
+        onClick={onToggleSidebar}
+        title="Toggle file browser"
+      >
+        Files
+      </button>
       <button className="btn" onClick={onShowHelp} title="How to use Archform">?</button>
       <div className="toolbar-sep" />
       <button className="btn toolbar-icon-btn" onClick={onUndo} title="Undo (⌘Z)">↩</button>
