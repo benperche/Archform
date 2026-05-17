@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 
 function ExportMenu({ onExportJSON, onExportSVG, onExportPNG }) {
   const [open, setOpen] = useState(false);
