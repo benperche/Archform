@@ -166,10 +166,20 @@ function Slur({ x, visualX, width, slurY, startBar, length, isLastInRow, endBar,
   const inMarkMode = editMode === 'rehearsalMarks';
   const stroke = selected ? '#2563eb' : '#1a1a1a';
 
+  // Width of the bar number string in px (approx, for hit rect sizing)
+  const bnStr = formatBar(startBar);
+  const bnW = Math.max(18, bnStr.length * 6);
+
   return (
     <g>
-      {/* Invisible wide hit area for clicking the slur body */}
-      <path d={d} fill="none" stroke="transparent" strokeWidth={14} style={{ cursor: 'pointer' }} onClick={onClick} />
+      {/* Full bounding-box hit area — covers the entire arch rectangle */}
+      <rect
+        x={x1 - 4} y={cpY - 8}
+        width={(x2 - x1) + 8} height={(slurY - cpY) + 20}
+        fill="transparent"
+        style={{ cursor: 'pointer' }}
+        onClick={onClick}
+      />
 
       {/* Slur arc */}
       <path d={d} fill="none" stroke={stroke} strokeWidth={selected ? 2 : 1.5} strokeLinecap="round" />
@@ -197,7 +207,15 @@ function Slur({ x, visualX, width, slurY, startBar, length, isLastInRow, endBar,
       </text>
 
       {/* Start bar number — at nominal position (suppressed when a time sig is here) */}
-      {!hideBarNum && (
+      {!hideBarNum && (<>
+        {/* Hit rect around bar number */}
+        <rect
+          x={nx - bnW / 2 - 5} y={slurY + 9}
+          width={bnW + 10} height={14}
+          fill="transparent"
+          style={{ cursor: 'pointer' }}
+          onClick={onClick}
+        />
         <text
           x={nx}
           y={slurY + 17}
@@ -206,9 +224,9 @@ function Slur({ x, visualX, width, slurY, startBar, length, isLastInRow, endBar,
           fontFamily="Georgia, 'Times New Roman', serif"
           fill={selected ? '#2563eb' : '#999'}
         >
-          {formatBar(startBar)}
+          {bnStr}
         </text>
-      )}
+      </>)}
 
       {/* End bar number at the right tick of the last phrase in a row */}
       {isLastInRow && (
@@ -644,12 +662,20 @@ export default function DiagramCanvas({
           if (!pos) return null;
           const isActive = ann.id === activeAnnotationId;
           const clickable = !barPickMode && !editMode && !!onAnnotationClick;
+          // Estimate text width for the hit rect (rough char-width heuristic)
+          const annEstW = Math.max(50, ann.text.length * 6.5);
           return (
             <g
               key={ann.id}
               style={clickable ? { cursor: 'pointer' } : undefined}
               onClick={clickable ? (e) => { e.stopPropagation(); onAnnotationClick(ann.id); } : undefined}
             >
+              {/* Transparent hit rect around the annotation text */}
+              <rect
+                x={pos.x - 3} y={pos.slurY + 33 - 12}
+                width={annEstW + 6} height={18}
+                fill="transparent"
+              />
               <NoteText
                 text={ann.text}
                 x={pos.x} y={pos.slurY + 33}
