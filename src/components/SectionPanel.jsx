@@ -30,10 +30,13 @@ function ColorPicker({ value, onChange }) {
 const fmtBar = n => (Number.isInteger(n) ? String(n) : n.toFixed(1));
 
 function rowForBar(bar, rows) {
-  for (const row of rows) {
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
     const first = row.phrases[0].startBar;
     const last = row.phrases[row.phrases.length - 1];
-    if (bar >= first && bar <= last.startBar + last.length) return row;
+    const end = last.startBar + last.length;
+    const isLast = i === rows.length - 1;
+    if (bar >= first && (isLast ? bar <= end : bar < end)) return row;
   }
   return rows[rows.length - 1] ?? null;
 }

@@ -3,10 +3,16 @@ import { useState, useEffect, useRef } from 'react';
 const fmtBar = n => (Number.isInteger(n) ? String(n) : n.toFixed(1));
 
 function rowForBar(bar, rows) {
-  for (const row of rows) {
+  // Use strict < on the end boundary so a bar sitting exactly at a row
+  // boundary (end of row N = start of row N+1) maps to the *next* row,
+  // matching the same priority logic as barToPosition in layout.js.
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
     const first = row.phrases[0].startBar;
     const last = row.phrases[row.phrases.length - 1];
-    if (bar >= first && bar <= last.startBar + last.length) return row;
+    const end = last.startBar + last.length;
+    const isLast = i === rows.length - 1;
+    if (bar >= first && (isLast ? bar <= end : bar < end)) return row;
   }
   return rows[rows.length - 1] ?? null;
 }
