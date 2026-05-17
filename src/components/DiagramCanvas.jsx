@@ -799,7 +799,7 @@ export default function DiagramCanvas({
 
         {/* "Created with Archform" watermark — bottom centre, always visible */}
         <g
-          transform={`translate(${W / 2}, ${totalHeight - 20})`}
+          transform={`translate(${W / 2}, ${totalHeight - 28})`}
           style={{ pointerEvents: 'none', userSelect: 'none' }}
         >
           {/* Favicon logo: slur arch + ticks, no background, scaled to ~13 px */}
@@ -816,6 +816,15 @@ export default function DiagramCanvas({
             letterSpacing={0.3}
           >
             Created with Archform
+          </text>
+          <text x={0} y={14}
+            fontSize={9.5}
+            fontFamily="Georgia, 'Times New Roman', serif"
+            fill="#ccc"
+            textAnchor="middle"
+            letterSpacing={0.2}
+          >
+            benperche.github.io/Archform
           </text>
         </g>
 
