@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { TrashIcon } from './Icons';
 
 const fmtBar = n => (Number.isInteger(n) ? String(n) : n.toFixed(1));
 
@@ -167,7 +168,7 @@ export default function AnnotationPanel({
                   <div className="panel-edit-actions">
                     <button className="btn btn-primary" onClick={saveEdit}>Save</button>
                     <button className="btn" onClick={cancelEdit}>Cancel</button>
-                    <button className="item-delete" onClick={() => { onRemoveAnnotation(a.id); cancelEdit(); }}>✕</button>
+                    <button className="item-delete" title="Delete" onClick={() => { onRemoveAnnotation(a.id); cancelEdit(); }}><TrashIcon /></button>
                   </div>
                 </div>
               ) : (
@@ -176,7 +177,7 @@ export default function AnnotationPanel({
                     <span className="panel-item-label" style={{ fontStyle: 'italic' }}>{a.text}</span>
                     <span className="panel-item-meta">bar {a.bar}</span>
                   </div>
-                  <button className="item-delete" onClick={e => { e.stopPropagation(); onRemoveAnnotation(a.id); }}>✕</button>
+                  <button className="item-delete" title="Delete" onClick={e => { e.stopPropagation(); onRemoveAnnotation(a.id); }}><TrashIcon /></button>
                 </div>
               )
             );

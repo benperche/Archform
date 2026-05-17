@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { TrashIcon } from './Icons';
 
 const LEVEL_LABELS = ['Broad', 'Mid', 'Fine'];
 
@@ -245,7 +246,7 @@ export default function SectionPanel({
                   <div className="panel-edit-actions">
                     <button className="btn btn-primary" onClick={saveEdit}>Save</button>
                     <button className="btn" onClick={cancelEdit}>Cancel</button>
-                    <button className="item-delete" onClick={() => { onRemove(s.id); cancelEdit(); }}>✕</button>
+                    <button className="item-delete" title="Delete" onClick={() => { onRemove(s.id); cancelEdit(); }}><TrashIcon /></button>
                   </div>
                 </div>
               ) : (
@@ -255,7 +256,7 @@ export default function SectionPanel({
                     <span className="panel-item-label">{s.label}</span>
                     <span className="panel-item-meta">{s.startBar}–{s.endBar != null ? s.endBar : '…'} · {LEVEL_LABELS[s.level] || 'Broad'}</span>
                   </div>
-                  <button className="item-delete" onClick={e => { e.stopPropagation(); onRemove(s.id); }}>✕</button>
+                  <button className="item-delete" title="Delete" onClick={e => { e.stopPropagation(); onRemove(s.id); }}><TrashIcon /></button>
                 </div>
               )
             );
