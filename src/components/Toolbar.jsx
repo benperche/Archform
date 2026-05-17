@@ -1,12 +1,4 @@
-import { useRef, useState } from 'react';
-import { relabelMarks } from '../utils/marks';
-
-const MARK_STYLES = [
-  { value: 'letters', label: 'Letters' },
-  { value: 'numbers', label: 'Numbers' },
-  { value: 'roman', label: 'Roman numerals' },
-  { value: 'bars', label: 'Bar numbers' },
-];
+import { useRef } from 'react';
 
 function ExportMenu({ onExportJSON, onExportSVG, onExportPNG }) {
   const [open, setOpen] = useState(false);
@@ -55,18 +47,8 @@ export default function Toolbar({
   onImport,
   onShare,
   shareCopied,
-  onAddManualMark,
 }) {
   const fileInputRef = useRef();
-  const [manualBar, setManualBar] = useState('');
-
-  const inMarkMode = state.editMode === 'rehearsalMarks';
-
-  const enterMarkMode = () =>
-    setState(s => ({ ...s, editMode: 'rehearsalMarks', selectedPhraseIndex: null }));
-
-  const exitMarkMode = () =>
-    setState(s => ({ ...s, editMode: null }));
 
   const handleFileChange = e => {
     const file = e.target.files?.[0];
@@ -74,8 +56,7 @@ export default function Toolbar({
   };
 
   return (
-    <div className={`toolbar ${inMarkMode ? 'toolbar--mark-mode' : ''}`}>
-      {/* Left: sidebar toggle + help + undo/redo + title + composer */}
+    <div className="toolbar">
       <button
         className={`btn ${sidebarOpen ? 'btn-active' : ''}`}
         onClick={onToggleSidebar}
@@ -103,63 +84,14 @@ export default function Toolbar({
         />
       </div>
 
-      {/* Right: panel + mark mode + export + share */}
-      {inMarkMode ? (
-        <div className="mark-mode-bar">
-          <span className="mark-mode-hint">Click a slur start to place a mark · Esc to exit</span>
-          <div className="mark-style-group">
-            {MARK_STYLES.map(({ value, label }) => (
-              <label key={value} className={`mark-style-radio ${state.rehearsalMarkStyle === value ? 'active' : ''}`}>
-                <input
-                  type="radio"
-                  name="markStyle"
-                  value={value}
-                  checked={state.rehearsalMarkStyle === value}
-                  onChange={() => setState(s => ({ ...s, rehearsalMarkStyle: value, rehearsalMarks: relabelMarks(s.rehearsalMarks, value) }))}
-                />
-                {label}
-              </label>
-            ))}
-          </div>
-          <div className="mark-manual-add">
-            <input
-              className="mark-manual-input"
-              type="number"
-              placeholder="Bar"
-              min="1"
-              step="0.5"
-              value={manualBar}
-              onChange={e => setManualBar(e.target.value)}
-              onKeyDown={e => {
-                if (e.key === 'Enter') {
-                  const b = parseFloat(manualBar);
-                  if (!isNaN(b)) { onAddManualMark(b); setManualBar(''); }
-                }
-              }}
-            />
-            <button
-              className="btn"
-              disabled={!manualBar.trim() || isNaN(parseFloat(manualBar))}
-              onClick={() => {
-                const b = parseFloat(manualBar);
-                if (!isNaN(b)) { onAddManualMark(b); setManualBar(''); }
-              }}
-            >
-              Add mark
-            </button>
-          </div>
-          <button className="btn btn-cancel" onClick={exitMarkMode}>Exit</button>
-        </div>
-      ) : (
-        <div className="toolbar-actions">
-          <button className="btn" onClick={() => fileInputRef.current?.click()}>Import</button>
-          <ExportMenu onExportJSON={onExportJSON} onExportSVG={onExportSVG} onExportPNG={onExportPNG} />
-          <button className="btn" onClick={onShare}>
-            {shareCopied ? 'Copied!' : 'Share'}
-          </button>
-          <button className="btn btn-primary" onClick={() => window.print()}>Print / PDF</button>
-        </div>
-      )}
+      <div className="toolbar-actions">
+        <button className="btn" onClick={() => fileInputRef.current?.click()}>Import</button>
+        <ExportMenu onExportJSON={onExportJSON} onExportSVG={onExportSVG} onExportPNG={onExportPNG} />
+        <button className="btn" onClick={onShare}>
+          {shareCopied ? 'Copied!' : 'Share'}
+        </button>
+        <button className="btn btn-primary" onClick={() => window.print()}>Print / PDF</button>
+      </div>
 
       <input
         ref={fileInputRef}

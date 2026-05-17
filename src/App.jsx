@@ -9,6 +9,7 @@ import OverlapPopover from './components/OverlapPopover';
 import TimeSignaturePanel from './components/TimeSignaturePanel';
 import RepeatsPanel from './components/RepeatsPanel';
 import FermataPanel from './components/FermataPanel';
+import RehearsalMarksPanel from './components/RehearsalMarksPanel';
 import FileSidebar from './components/FileSidebar';
 import { relabelMarks } from './utils/marks';
 import { parseQuickEntry, computeLayout, CANVAS_WIDTH } from './utils/layout';
@@ -228,8 +229,9 @@ export default function App() {
   useEffect(() => {
     const handler = e => {
       const mod = e.metaKey || e.ctrlKey;
-      if (e.key === 'Escape' && state.editMode) {
-        setState(s => ({ ...s, editMode: null }));
+      if (e.key === 'Escape') {
+        if (state.activePanel === 'rehearsalMarks') setState(s => ({ ...s, activePanel: null }));
+        else if (state.editMode) setState(s => ({ ...s, editMode: null }));
       }
       if (mod && e.key === 'z' && !e.shiftKey) { e.preventDefault(); undo(); }
       if (mod && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) { e.preventDefault(); redo(); }
@@ -487,6 +489,11 @@ export default function App() {
     });
   }, [recordHistory]);
 
+  const handleMarkStyleChange = useCallback((style) => {
+    recordHistory();
+    setState(s => ({ ...s, rehearsalMarkStyle: style, rehearsalMarks: relabelMarks(s.rehearsalMarks, style) }));
+  }, [recordHistory]);
+
   const handleAddManualMark = useCallback((bar) => {
     recordHistory();
     setState(s => {
@@ -726,8 +733,6 @@ export default function App() {
         onImport={handleImport}
         onShare={handleShare}
         shareCopied={shareCopied}
-        onAddManualMark={handleAddManualMark}
-        onQuickEntryChange={recordHistoryDebounced}
       />
 
       <div className="main-area">
@@ -765,7 +770,7 @@ export default function App() {
               repeats={state.repeats}
               fermatas={state.fermatas}
               selectedPhraseIndex={state.selectedPhraseIndex}
-              editMode={state.editMode}
+              editMode={state.activePanel === 'rehearsalMarks' ? 'rehearsalMarks' : state.editMode}
               barPickMode={barPickMode}
               svgRef={svgRef}
               rowSpacing={state.rowSpacing}
@@ -795,15 +800,26 @@ export default function App() {
           </div>
 
           <div className="bottom-area">
-            <QuickEntry
-              text={state.quickEntryText}
-              onChange={text => {
-                recordHistoryDebounced();
-                setState(s => ({ ...s, quickEntryText: text, selectedPhraseIndex: null, selectedTextRange: null }));
-              }}
-              phrases={phrases}
-              textSelection={textSelection}
-            />
+            {state.activePanel === 'rehearsalMarks' ? (
+              <RehearsalMarksPanel
+                rehearsalMarks={state.rehearsalMarks}
+                rehearsalMarkStyle={state.rehearsalMarkStyle}
+                onClose={() => togglePanel('rehearsalMarks')}
+                onStyleChange={handleMarkStyleChange}
+                onAddManualMark={handleAddManualMark}
+                onRemoveMark={handleRemoveRehearsalMark}
+              />
+            ) : (
+              <QuickEntry
+                text={state.quickEntryText}
+                onChange={text => {
+                  recordHistoryDebounced();
+                  setState(s => ({ ...s, quickEntryText: text, selectedPhraseIndex: null, selectedTextRange: null }));
+                }}
+                phrases={phrases}
+                textSelection={textSelection}
+              />
+            )}
             <div className="bottom-panel-buttons">
               <button className={`btn bottom-btn ${state.activePanel === 'sections' ? 'btn-active' : ''}`}
                 onClick={() => togglePanel('sections')}>Sections</button>
@@ -811,10 +827,8 @@ export default function App() {
                 onClick={() => togglePanel('labels')}>Labels</button>
               <button className={`btn bottom-btn ${state.activePanel === 'timeSigs' ? 'btn-active' : ''}`}
                 onClick={() => togglePanel('timeSigs')}>Time sigs</button>
-              <button className={`btn bottom-btn`}
-                onClick={() => { setState(s => ({ ...s, editMode: 'rehearsalMarks', selectedPhraseIndex: null, activePanel: null })); }}>
-                Reh. marks
-              </button>
+              <button className={`btn bottom-btn ${state.activePanel === 'rehearsalMarks' ? 'btn-active' : ''}`}
+                onClick={() => togglePanel('rehearsalMarks')}>Reh. marks</button>
               <button className={`btn bottom-btn ${state.activePanel === 'repeats' ? 'btn-active' : ''}`}
                 onClick={() => togglePanel('repeats')}>Barlines</button>
               <button className={`btn bottom-btn ${state.activePanel === 'fermatas' ? 'btn-active' : ''}`}

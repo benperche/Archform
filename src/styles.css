@@ -60,11 +60,6 @@ body {
   min-height: 48px;
 }
 
-.toolbar--mark-mode {
-  background: #eff6ff;
-  border-bottom-color: #bfdbfe;
-}
-
 .toolbar-meta {
   display: flex;
   gap: 10px;
@@ -109,74 +104,6 @@ body {
   margin: 0 3px;
 }
 
-/* ── Rehearsal mark mode bar ────────────────────────────────── */
-
-.mark-mode-bar {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  flex: 1;
-}
-
-.mark-mode-hint {
-  font-size: 12px;
-  color: #3b82f6;
-  font-style: italic;
-}
-
-.mark-style-group {
-  display: flex;
-  gap: 2px;
-  background: #dbeafe;
-  border-radius: 6px;
-  padding: 2px;
-}
-
-.mark-style-radio {
-  display: flex;
-  align-items: center;
-  gap: 0;
-  padding: 4px 10px;
-  border-radius: 4px;
-  font-size: 12px;
-  cursor: pointer;
-  color: #3b82f6;
-  transition: background 0.1s;
-}
-
-.mark-style-radio input[type="radio"] {
-  display: none;
-}
-
-.mark-style-radio.active {
-  background: white;
-  color: var(--text);
-  font-weight: 600;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-}
-
-.mark-manual-add {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
-
-.mark-manual-input {
-  width: 64px;
-  padding: 4px 7px;
-  border: 1px solid #bfdbfe;
-  border-radius: 5px;
-  font-size: 12px;
-  background: white;
-  color: var(--text);
-}
-
-.mark-manual-input:focus {
-  outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 2px #bfdbfe;
-}
-
 /* ── Buttons ─────────────────────────────────────────────────── */
 
 .btn {
@@ -214,14 +141,6 @@ body {
   font-size: 14px;
   line-height: 1;
 }
-
-.btn-cancel {
-  background: transparent;
-  border-color: #93c5fd;
-  color: #2563eb;
-  margin-left: auto;
-}
-.btn-cancel:hover { background: #dbeafe; }
 
 /* ── Diagram area ────────────────────────────────────────────── */
 
@@ -311,6 +230,141 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+/* ── Rehearsal marks panel (replaces QuickEntry) ─────────────── */
+
+.reh-marks-panel {
+  flex: 0 0 66.666%;
+  display: flex;
+  flex-direction: column;
+  padding: 8px 16px 10px 24px;
+  min-width: 0;
+  gap: 8px;
+}
+
+.reh-marks-top {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.reh-marks-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.reh-marks-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  flex-shrink: 0;
+}
+
+.reh-marks-hint {
+  font-size: 11px;
+  color: var(--subtle);
+  flex: 1;
+  min-width: 0;
+}
+
+.reh-marks-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.reh-style-group {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.reh-style-btn {
+  padding: 3px 9px;
+  font-size: 11.5px;
+  font-family: inherit;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: white;
+  color: var(--text);
+  cursor: pointer;
+  transition: background 0.1s, border-color 0.1s, color 0.1s;
+}
+.reh-style-btn:hover { background: #f0ede8; border-color: #bbb; }
+.reh-style-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+}
+
+.reh-manual-add {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.reh-bar-input {
+  width: 64px;
+  padding: 4px 6px;
+  font-size: 12px;
+  font-family: inherit;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: white;
+  color: var(--text);
+  outline: none;
+}
+.reh-bar-input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(37,99,235,0.15); }
+
+.reh-marks-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-content: flex-start;
+}
+
+.reh-marks-empty {
+  font-size: 11px;
+  color: #bbb;
+  font-style: italic;
+}
+
+.reh-mark-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #f0ede8;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 2px 6px 2px 8px;
+  font-size: 11.5px;
+}
+
+.reh-mark-label {
+  font-weight: 600;
+  font-family: Georgia, serif;
+  color: var(--text);
+}
+
+.reh-mark-bar {
+  color: var(--subtle);
+  font-size: 10.5px;
+}
+
+.reh-mark-remove {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 9px;
+  color: #ccc;
+  padding: 1px 2px;
+  border-radius: 2px;
+  line-height: 1;
+  margin-left: 2px;
+}
+.reh-mark-remove:hover { color: #e53e3e; background: #fff5f5; }
 
 .quick-entry-header {
   display: flex;
