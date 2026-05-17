@@ -424,7 +424,9 @@ export default function DiagramCanvas({
   timeSignatures = [],
   rehearsalMarks,
   rehearsalMarkStyle,
-  annotations,
+  labels = [],
+  repeats = [],
+  fermatas = [],
   selectedPhraseIndex,
   editMode,
   barPickMode,
@@ -436,9 +438,9 @@ export default function DiagramCanvas({
   onSlurStartClick,
   onRemoveRehearsalMark,
   onBarPick,
-  activeAnnotationId,
+  activeLabelId,
   activeSectionId,
-  onAnnotationClick,
+  onLabelClick,
   onSectionClick,
 }) {
   const { rows, totalHeight, HEADER_HEIGHT } = layout;
@@ -656,28 +658,22 @@ export default function DiagramCanvas({
           );
         })}
 
-        {/* Annotations — italic text below each row's bar-number zone */}
-        {annotations.map(ann => {
-          const pos = getBarPos(ann.bar);
+        {/* Labels — italic text below each row's bar-number zone */}
+        {labels.map(lbl => {
+          const pos = getBarPos(lbl.bar);
           if (!pos) return null;
-          const isActive = ann.id === activeAnnotationId;
-          const clickable = !barPickMode && !editMode && !!onAnnotationClick;
-          // Estimate text width for the hit rect (rough char-width heuristic)
-          const annEstW = Math.max(50, ann.text.length * 6.5);
+          const isActive = lbl.id === activeLabelId;
+          const clickable = !barPickMode && !editMode && !!onLabelClick;
+          const estW = Math.max(50, lbl.text.length * 6.5);
           return (
             <g
-              key={ann.id}
+              key={lbl.id}
               style={clickable ? { cursor: 'pointer' } : undefined}
-              onClick={clickable ? (e) => { e.stopPropagation(); onAnnotationClick(ann.id); } : undefined}
+              onClick={clickable ? (e) => { e.stopPropagation(); onLabelClick(lbl.id); } : undefined}
             >
-              {/* Transparent hit rect around the annotation text */}
-              <rect
-                x={pos.x - 3} y={pos.slurY + 33 - 12}
-                width={annEstW + 6} height={18}
-                fill="transparent"
-              />
+              <rect x={pos.x - 3} y={pos.slurY + 33 - 12} width={estW + 6} height={18} fill="transparent" />
               <NoteText
-                text={ann.text}
+                text={lbl.text}
                 x={pos.x} y={pos.slurY + 33}
                 fontSize={11} fill={isActive ? '#2563eb' : '#555'} fontStyle="italic"
               />
@@ -701,9 +697,69 @@ export default function DiagramCanvas({
           );
         })}
 
+        {/* Repeat barlines & final barlines */}
+        {repeats.map(rp => {
+          const pos = getBarPos(rp.bar);
+          if (!pos) return null;
+          const x = pos.x;
+          const top = pos.slurY - 28;   // span from above the slur arc
+          const bot = pos.slurY + 10;   // to just below
+          const h = bot - top;
+          const f = '#1a1a1a';
+          if (rp.type === 'start') {
+            return (
+              <g key={rp.id}>
+                <line x1={x} y1={top} x2={x} y2={bot} stroke={f} strokeWidth={1} />
+                <line x1={x + 2} y1={top} x2={x + 2} y2={bot} stroke={f} strokeWidth={3.5} />
+                <circle cx={x + 7} cy={top + h * 0.35} r={1.8} fill={f} />
+                <circle cx={x + 7} cy={top + h * 0.65} r={1.8} fill={f} />
+              </g>
+            );
+          }
+          if (rp.type === 'end') {
+            return (
+              <g key={rp.id}>
+                <circle cx={x - 7} cy={top + h * 0.35} r={1.8} fill={f} />
+                <circle cx={x - 7} cy={top + h * 0.65} r={1.8} fill={f} />
+                <line x1={x - 2} y1={top} x2={x - 2} y2={bot} stroke={f} strokeWidth={3.5} />
+                <line x1={x} y1={top} x2={x} y2={bot} stroke={f} strokeWidth={1} />
+              </g>
+            );
+          }
+          // final barline
+          return (
+            <g key={rp.id}>
+              <line x1={x - 2} y1={top} x2={x - 2} y2={bot} stroke={f} strokeWidth={1} />
+              <line x1={x + 1} y1={top} x2={x + 1} y2={bot} stroke={f} strokeWidth={3.5} />
+            </g>
+          );
+        })}
+
+        {/* Fermatas — pause symbol above the slur arc */}
+        {fermatas.map(fm => {
+          const pos = getBarPos(fm.bar);
+          if (!pos) return null;
+          const cx = pos.x;
+          const cy = pos.slurY - 36;  // above the arc
+          const r = 7;
+          const f = '#1a1a1a';
+          return (
+            <g key={fm.id}>
+              {/* Semicircle arc (open downward = pause sign) */}
+              <path
+                d={`M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${cx + r} ${cy}`}
+                stroke={f} strokeWidth={1.2} fill="none"
+              />
+              {/* Dot */}
+              <circle cx={cx} cy={cy + 3.5} r={1.8} fill={f} />
+            </g>
+          );
+        })}
+
         {/* Row spacing drag handles — live in the left PADDING zone (x 0..PADDING) */}
         {rows.slice(1).map(row => {
           const firstBar = row.phrases[0].startBar;
+          // data-no-export marks elements stripped before SVG/PNG export
           const extra = row.extraGap || 0;
           // Handle sits at the top of the gap (= natural bottom of previous row)
           const gripY = row.rowY - extra;
@@ -711,6 +767,7 @@ export default function DiagramCanvas({
           return (
             <g
               key={`spacing-${firstBar}`}
+              data-no-export="1"
               style={{ cursor: 'ns-resize' }}
               onMouseDown={e => startSpacingDrag(e, firstBar, extra)}
             >

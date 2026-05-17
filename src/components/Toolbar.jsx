@@ -1,8 +1,10 @@
 import { useRef, useState } from 'react';
+import { relabelMarks } from '../utils/marks';
 
 const MARK_STYLES = [
   { value: 'letters', label: 'Letters' },
   { value: 'numbers', label: 'Numbers' },
+  { value: 'roman', label: 'Roman numerals' },
   { value: 'bars', label: 'Bar numbers' },
 ];
 
@@ -51,14 +53,10 @@ export default function Toolbar({
   onImport,
   onShare,
   shareCopied,
-  onToggleSectionPanel,
-  onToggleAnnotationPanel,
-  onToggleTimeSigPanel,
-  sectionPanelOpen,
-  annotationPanelOpen,
-  timeSigPanelOpen,
+  onAddManualMark,
 }) {
   const fileInputRef = useRef();
+  const [manualBar, setManualBar] = useState('');
 
   const inMarkMode = state.editMode === 'rehearsalMarks';
 
@@ -115,38 +113,43 @@ export default function Toolbar({
                   name="markStyle"
                   value={value}
                   checked={state.rehearsalMarkStyle === value}
-                  onChange={() => setState(s => ({ ...s, rehearsalMarkStyle: value }))}
+                  onChange={() => setState(s => ({ ...s, rehearsalMarkStyle: value, rehearsalMarks: relabelMarks(s.rehearsalMarks, value) }))}
                 />
                 {label}
               </label>
             ))}
           </div>
+          <div className="mark-manual-add">
+            <input
+              className="mark-manual-input"
+              type="number"
+              placeholder="Bar"
+              min="1"
+              step="0.5"
+              value={manualBar}
+              onChange={e => setManualBar(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter') {
+                  const b = parseFloat(manualBar);
+                  if (!isNaN(b)) { onAddManualMark(b); setManualBar(''); }
+                }
+              }}
+            />
+            <button
+              className="btn"
+              disabled={!manualBar.trim() || isNaN(parseFloat(manualBar))}
+              onClick={() => {
+                const b = parseFloat(manualBar);
+                if (!isNaN(b)) { onAddManualMark(b); setManualBar(''); }
+              }}
+            >
+              Add mark
+            </button>
+          </div>
           <button className="btn btn-cancel" onClick={exitMarkMode}>Exit</button>
         </div>
       ) : (
         <div className="toolbar-actions">
-          <button
-            className={`btn ${sectionPanelOpen ? 'btn-active' : ''}`}
-            onClick={onToggleSectionPanel}
-          >
-            Sections
-          </button>
-          <button
-            className={`btn ${annotationPanelOpen ? 'btn-active' : ''}`}
-            onClick={onToggleAnnotationPanel}
-          >
-            Annotations
-          </button>
-          <button
-            className={`btn ${timeSigPanelOpen ? 'btn-active' : ''}`}
-            onClick={onToggleTimeSigPanel}
-          >
-            Time sigs
-          </button>
-          <button className="btn" onClick={enterMarkMode}>
-            Rehearsal marks
-          </button>
-          <div className="toolbar-sep" />
           <button className="btn" onClick={() => fileInputRef.current?.click()}>Import</button>
           <ExportMenu onExportJSON={onExportJSON} onExportSVG={onExportSVG} onExportPNG={onExportPNG} />
           <button className="btn" onClick={onShare}>

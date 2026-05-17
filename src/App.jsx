@@ -3,11 +3,14 @@ import DiagramCanvas from './components/DiagramCanvas';
 import QuickEntry from './components/QuickEntry';
 import Toolbar from './components/Toolbar';
 import SectionPanel from './components/SectionPanel';
-import AnnotationPanel from './components/AnnotationPanel';
+import LabelPanel from './components/LabelPanel';
 import HelpModal from './components/HelpModal';
 import OverlapPopover from './components/OverlapPopover';
 import TimeSignaturePanel from './components/TimeSignaturePanel';
+import RepeatsPanel from './components/RepeatsPanel';
+import FermataPanel from './components/FermataPanel';
 import FileSidebar from './components/FileSidebar';
+import { relabelMarks } from './utils/marks';
 import { parseQuickEntry, computeLayout, CANVAS_WIDTH } from './utils/layout';
 import {
   loadIndex, saveIndex, loadFile, saveFile, deleteFile,
@@ -40,11 +43,12 @@ const defaultDiagramState = {
   quickEntryText: '',
   rehearsalMarks: [],
   rehearsalMarkStyle: 'letters',
-  rehearsalMarkCounter: 0,
   structuralMarkers: [],
-  annotations: [],
+  labels: [],
   phraseOverlaps: {},
   timeSignatures: [],
+  repeats: [],
+  fermatas: [],
   rowSpacing: {},
 };
 
@@ -55,9 +59,9 @@ const defaultTransient = {
   activePanel: null,
   barPickField: null,
   pickedBar: null,
-  activeAnnotationId: null,
+  activeLabelId: null,
   activeSectionId: null,
-  prefillAnnotationBar: null,
+  prefillLabelBar: null,
   prefillSectionBar: null,
 };
 
@@ -66,7 +70,7 @@ const defaultState = { ...defaultDiagramState, ...defaultTransient };
 function getDiagramSnapshot(s) {
   // eslint-disable-next-line no-unused-vars
   const { selectedPhraseIndex, selectedTextRange, editMode, activePanel, barPickField, pickedBar,
-          activeAnnotationId, activeSectionId, prefillAnnotationBar, prefillSectionBar, ...data } = s;
+          activeLabelId, activeSectionId, prefillLabelBar, prefillSectionBar, ...data } = s;
   return data;
 }
 
@@ -119,23 +123,20 @@ function getAppInit() {
 
 const HELP_SEEN_KEY = 'pd_help_seen';
 
-function counterToLetter(n) {
-  let result = '';
-  n = n + 1;
-  while (n > 0) {
-    n--;
-    result = String.fromCharCode(65 + (n % 26)) + result;
-    n = Math.floor(n / 26);
-  }
-  return result;
-}
 
 export default function App() {
   const [fileIndex, setFileIndex] = useState(() => getAppInit().index);
-  const [state, setState] = useState(() => ({ ...defaultState, ...getAppInit().diagram }));
+  const [state, setState] = useState(() => {
+    const d = getAppInit().diagram;
+    // Migrate old 'annotations' key to 'labels' for saved files pre-rename
+    return { ...defaultState, ...d, labels: d.labels ?? d.annotations ?? [] };
+  });
   const currentIdRef = useRef(getAppInit().index.currentId);
   const [showHelp, setShowHelp] = useState(() => !localStorage.getItem(HELP_SEEN_KEY));
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(() => {
+    const saved = localStorage.getItem('pd_sidebar_open');
+    return saved === null ? true : saved === '1';
+  });
 
   // ── History (undo/redo) ─────────────────────────────────────
   const stateRef = useRef(state);
@@ -237,14 +238,18 @@ export default function App() {
   // Overlap popover position (fixed coordinates derived from SVG rect)
   const overlapPopoverPos = useMemo(() => {
     if (state.selectedPhraseIndex == null || !svgRef.current) return null;
-    const phrase = layout.rows.flatMap(r => r.phrases).find(p => p.phraseIndex === state.selectedPhraseIndex);
+    const row = layout.rows.find(r => r.phrases.some(p => p.phraseIndex === state.selectedPhraseIndex));
+    if (!row) return null;
+    const phrase = row.phrases.find(p => p.phraseIndex === state.selectedPhraseIndex);
     if (!phrase) return null;
     const svgRect = svgRef.current.getBoundingClientRect();
     const scale = svgRect.width / CANVAS_WIDTH;
-    return {
-      x: svgRect.left + (phrase.visualX + phrase.width / 2) * scale,
-      y: svgRect.top + (phrase.slurY - 90) * scale,
-    };
+    const cx = svgRect.left + (phrase.visualX + phrase.width / 2) * scale;
+    // Anchor just above the slur arc for "open upward" …
+    const yAbove = svgRect.top + (phrase.slurY - 20) * scale;
+    // … and just below the full row content for "open downward"
+    const yBelow = svgRect.top + (row.rowY + row.rowHeight) * scale + 6;
+    return { x: cx, yAbove, yBelow };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.selectedPhraseIndex, layout]);
 
@@ -265,11 +270,11 @@ export default function App() {
   }, []);
 
   // ── Canvas → panel linking ──────────────────────────────────
-  const handleAnnotationCanvasClick = useCallback((id) => {
+  const handleLabelCanvasClick = useCallback((id) => {
     setState(s => ({
       ...s,
-      activePanel: 'annotations',
-      activeAnnotationId: id,
+      activePanel: 'labels',
+      activeLabelId: id,
       barPickField: null,
       pickedBar: null,
     }));
@@ -285,21 +290,21 @@ export default function App() {
     }));
   }, []);
 
-  const handleAnnotationEditChange = useCallback((id) => {
-    setState(s => ({ ...s, activeAnnotationId: id ?? null }));
+  const handleLabelEditChange = useCallback((id) => {
+    setState(s => ({ ...s, activeLabelId: id ?? null }));
   }, []);
 
   const handleSectionEditChange = useCallback((id) => {
     setState(s => ({ ...s, activeSectionId: id ?? null }));
   }, []);
 
-  const handleAddAnnotationHere = useCallback((bar) => {
+  const handleAddLabelHere = useCallback((bar) => {
     setState(s => ({
       ...s,
-      activePanel: 'annotations',
-      activeAnnotationId: null,
+      activePanel: 'labels',
+      activeLabelId: null,
       selectedPhraseIndex: null,
-      prefillAnnotationBar: { bar, ts: Date.now() },
+      prefillLabelBar: { bar, ts: Date.now() },
     }));
   }, []);
 
@@ -356,14 +361,15 @@ export default function App() {
 
   const handleSwitchFile = useCallback((id) => {
     const data = loadFile(id) ?? defaultDiagramState;
+    const merged = { ...defaultState, ...data, labels: data.labels ?? data.annotations ?? [] };
     currentIdRef.current = id;
-    historyRef.current = { stack: [getDiagramSnapshot({ ...defaultState, ...data })], index: 0 };
+    historyRef.current = { stack: [getDiagramSnapshot(merged)], index: 0 };
     setFileIndex(prev => {
       const updated = { ...prev, currentId: id };
       saveIndex(updated);
       return updated;
     });
-    setState({ ...defaultState, ...data });
+    setState(merged);
   }, []);
 
   const handleDeleteFile = useCallback((id) => {
@@ -376,8 +382,9 @@ export default function App() {
         newCurrentId = remaining[remaining.length - 1].id;
         currentIdRef.current = newCurrentId;
         const data = loadFile(newCurrentId) ?? defaultDiagramState;
-        historyRef.current = { stack: [getDiagramSnapshot({ ...defaultState, ...data })], index: 0 };
-        setState({ ...defaultState, ...data });
+        const merged = { ...defaultState, ...data, labels: data.labels ?? data.annotations ?? [] };
+        historyRef.current = { stack: [getDiagramSnapshot(merged)], index: 0 };
+        setState(merged);
       }
       const updated = { ...prev, currentId: newCurrentId, files: remaining };
       saveIndex(updated);
@@ -431,28 +438,35 @@ export default function App() {
     recordHistory();
     setState(s => {
       const existing = s.rehearsalMarks.find(m => m.bar === bar);
+      let marks;
       if (existing) {
-        return { ...s, rehearsalMarks: s.rehearsalMarks.filter(m => m.bar !== bar) };
-      }
-      let label;
-      if (s.rehearsalMarkStyle === 'letters') {
-        label = counterToLetter(s.rehearsalMarkCounter);
-      } else if (s.rehearsalMarkStyle === 'numbers') {
-        label = String(s.rehearsalMarkCounter + 1);
+        marks = s.rehearsalMarks.filter(m => m.bar !== bar);
       } else {
-        label = Number.isInteger(bar) ? String(bar) : bar.toFixed(1);
+        marks = [...s.rehearsalMarks, { id: `r${Date.now()}`, bar, label: '' }];
       }
-      return {
-        ...s,
-        rehearsalMarks: [...s.rehearsalMarks, { id: `r${Date.now()}`, bar, label }],
-        rehearsalMarkCounter: s.rehearsalMarkCounter + 1,
-      };
+      return { ...s, rehearsalMarks: relabelMarks(marks, s.rehearsalMarkStyle) };
     });
   }, [recordHistory]);
 
   const handleRemoveRehearsalMark = useCallback((id) => {
     recordHistory();
-    setState(s => ({ ...s, rehearsalMarks: s.rehearsalMarks.filter(m => m.id !== id) }));
+    setState(s => {
+      const marks = s.rehearsalMarks.filter(m => m.id !== id);
+      return { ...s, rehearsalMarks: relabelMarks(marks, s.rehearsalMarkStyle) };
+    });
+  }, [recordHistory]);
+
+  const handleAddManualMark = useCallback((bar) => {
+    recordHistory();
+    setState(s => {
+      // Toggle off if one already exists at this bar
+      if (s.rehearsalMarks.find(m => m.bar === bar)) {
+        const marks = s.rehearsalMarks.filter(m => m.bar !== bar);
+        return { ...s, rehearsalMarks: relabelMarks(marks, s.rehearsalMarkStyle) };
+      }
+      const marks = [...s.rehearsalMarks, { id: `r${Date.now()}`, bar, label: '' }];
+      return { ...s, rehearsalMarks: relabelMarks(marks, s.rehearsalMarkStyle) };
+    });
   }, [recordHistory]);
 
   const handleAddSection = useCallback((section) => {
@@ -470,19 +484,49 @@ export default function App() {
     setState(s => ({ ...s, structuralMarkers: s.structuralMarkers.map(m => m.id === id ? { ...m, ...updates } : m) }));
   }, [recordHistory]);
 
-  const handleAddAnnotation = useCallback((annotation) => {
+  const handleAddLabel = useCallback((label) => {
     recordHistory();
-    setState(s => ({ ...s, annotations: [...s.annotations, { id: `a${Date.now()}`, ...annotation }] }));
+    setState(s => ({ ...s, labels: [...s.labels, { id: `l${Date.now()}`, ...label }] }));
   }, [recordHistory]);
 
-  const handleRemoveAnnotation = useCallback((id) => {
+  const handleRemoveLabel = useCallback((id) => {
     recordHistory();
-    setState(s => ({ ...s, annotations: s.annotations.filter(a => a.id !== id) }));
+    setState(s => ({ ...s, labels: s.labels.filter(a => a.id !== id) }));
   }, [recordHistory]);
 
-  const handleUpdateAnnotation = useCallback((id, updates) => {
+  const handleUpdateLabel = useCallback((id, updates) => {
     recordHistory();
-    setState(s => ({ ...s, annotations: s.annotations.map(a => a.id === id ? { ...a, ...updates } : a) }));
+    setState(s => ({ ...s, labels: s.labels.map(a => a.id === id ? { ...a, ...updates } : a) }));
+  }, [recordHistory]);
+
+  const handleAddRepeat = useCallback((repeat) => {
+    recordHistory();
+    setState(s => ({ ...s, repeats: [...s.repeats, { id: `rp${Date.now()}`, ...repeat }] }));
+  }, [recordHistory]);
+
+  const handleRemoveRepeat = useCallback((id) => {
+    recordHistory();
+    setState(s => ({ ...s, repeats: s.repeats.filter(r => r.id !== id) }));
+  }, [recordHistory]);
+
+  const handleUpdateRepeat = useCallback((id, updates) => {
+    recordHistory();
+    setState(s => ({ ...s, repeats: s.repeats.map(r => r.id === id ? { ...r, ...updates } : r) }));
+  }, [recordHistory]);
+
+  const handleAddFermata = useCallback((fermata) => {
+    recordHistory();
+    setState(s => ({ ...s, fermatas: [...s.fermatas, { id: `f${Date.now()}`, ...fermata }] }));
+  }, [recordHistory]);
+
+  const handleRemoveFermata = useCallback((id) => {
+    recordHistory();
+    setState(s => ({ ...s, fermatas: s.fermatas.filter(f => f.id !== id) }));
+  }, [recordHistory]);
+
+  const handleUpdateFermata = useCallback((id, updates) => {
+    recordHistory();
+    setState(s => ({ ...s, fermatas: s.fermatas.map(f => f.id === id ? { ...f, ...updates } : f) }));
   }, [recordHistory]);
 
   const handleAddTimeSig = useCallback((ts) => {
@@ -535,10 +579,19 @@ export default function App() {
     URL.revokeObjectURL(url);
   };
 
-  const handleExportSVG = () => {
+  // Clone SVG and strip interactive-only elements before export
+  const getExportSVG = () => {
     const svg = svgRef.current;
-    if (!svg) return;
-    const source = '<?xml version="1.0" encoding="utf-8"?>\n' + new XMLSerializer().serializeToString(svg);
+    if (!svg) return null;
+    const clone = svg.cloneNode(true);
+    clone.querySelectorAll('[data-no-export]').forEach(el => el.remove());
+    return clone;
+  };
+
+  const handleExportSVG = () => {
+    const clone = getExportSVG();
+    if (!clone) return;
+    const source = '<?xml version="1.0" encoding="utf-8"?>\n' + new XMLSerializer().serializeToString(clone);
     const blob = new Blob([source], { type: 'image/svg+xml' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -549,14 +602,14 @@ export default function App() {
   };
 
   const handleExportPNG = () => {
-    const svg = svgRef.current;
-    if (!svg) return;
-    const source = new XMLSerializer().serializeToString(svg);
+    const clone = getExportSVG();
+    if (!clone) return;
+    const source = new XMLSerializer().serializeToString(clone);
     const blob = new Blob([source], { type: 'image/svg+xml' });
     const url = URL.createObjectURL(blob);
     const img = new Image();
     img.onload = () => {
-      const vb = svg.viewBox.baseVal;
+      const vb = svgRef.current.viewBox.baseVal;
       const scale = 2;
       const canvas = document.createElement('canvas');
       canvas.width = vb.width * scale;
@@ -588,10 +641,11 @@ export default function App() {
           quickEntryText: data.quickEntryText ?? '',
           rehearsalMarks: data.rehearsalMarks ?? [],
           rehearsalMarkStyle: data.rehearsalMarkStyle ?? 'letters',
-          rehearsalMarkCounter: data.rehearsalMarkCounter ?? 0,
           structuralMarkers: data.structuralMarkers ?? [],
-          annotations: data.annotations ?? [],
+          labels: data.labels ?? data.annotations ?? [],
           timeSignatures: data.timeSignatures ?? [],
+          repeats: data.repeats ?? [],
+          fermatas: data.fermatas ?? [],
           rowSpacing: data.rowSpacing ?? {},
         });
       } catch {
@@ -622,7 +676,7 @@ export default function App() {
         state={state}
         setState={setState}
         sidebarOpen={sidebarOpen}
-        onToggleSidebar={() => setSidebarOpen(o => !o)}
+        onToggleSidebar={() => setSidebarOpen(o => { const next = !o; localStorage.setItem('pd_sidebar_open', next ? '1' : '0'); return next; })}
         onShowHelp={() => setShowHelp(true)}
         onUndo={undo}
         onRedo={redo}
@@ -632,12 +686,7 @@ export default function App() {
         onImport={handleImport}
         onShare={handleShare}
         shareCopied={shareCopied}
-        onToggleSectionPanel={() => togglePanel('sections')}
-        onToggleAnnotationPanel={() => togglePanel('annotations')}
-        onToggleTimeSigPanel={() => togglePanel('timeSigs')}
-        sectionPanelOpen={state.activePanel === 'sections'}
-        annotationPanelOpen={state.activePanel === 'annotations'}
-        timeSigPanelOpen={state.activePanel === 'timeSigs'}
+        onAddManualMark={handleAddManualMark}
         onQuickEntryChange={recordHistoryDebounced}
       />
 
@@ -664,7 +713,9 @@ export default function App() {
               timeSignatures={state.timeSignatures}
               rehearsalMarks={state.rehearsalMarks}
               rehearsalMarkStyle={state.rehearsalMarkStyle}
-              annotations={state.annotations}
+              labels={state.labels}
+              repeats={state.repeats}
+              fermatas={state.fermatas}
               selectedPhraseIndex={state.selectedPhraseIndex}
               editMode={state.editMode}
               barPickMode={barPickMode}
@@ -676,9 +727,9 @@ export default function App() {
               onSlurStartClick={handleSlurStartClick}
               onRemoveRehearsalMark={handleRemoveRehearsalMark}
               onBarPick={handleBarPick}
-              activeAnnotationId={state.activeAnnotationId}
+              activeLabelId={state.activeLabelId}
               activeSectionId={state.activeSectionId}
-              onAnnotationClick={handleAnnotationCanvasClick}
+              onLabelClick={handleLabelCanvasClick}
               onSectionClick={handleSectionCanvasClick}
             />
             {state.selectedPhraseIndex != null && overlapPopoverPos && !state.editMode && (
@@ -688,21 +739,39 @@ export default function App() {
                 position={overlapPopoverPos}
                 onClose={() => setState(s => ({ ...s, selectedPhraseIndex: null, selectedTextRange: null }))}
                 onChange={handleOverlapChange}
-                onAddAnnotationHere={handleAddAnnotationHere}
+                onAddAnnotationHere={handleAddLabelHere}
                 onAddSectionHere={handleAddSectionHere}
               />
             )}
           </div>
 
-          <QuickEntry
-            text={state.quickEntryText}
-            onChange={text => {
-              recordHistoryDebounced();
-              setState(s => ({ ...s, quickEntryText: text, selectedPhraseIndex: null, selectedTextRange: null }));
-            }}
-            phrases={phrases}
-            textSelection={textSelection}
-          />
+          <div className="bottom-area">
+            <QuickEntry
+              text={state.quickEntryText}
+              onChange={text => {
+                recordHistoryDebounced();
+                setState(s => ({ ...s, quickEntryText: text, selectedPhraseIndex: null, selectedTextRange: null }));
+              }}
+              phrases={phrases}
+              textSelection={textSelection}
+            />
+            <div className="bottom-panel-buttons">
+              <button className={`btn bottom-btn ${state.activePanel === 'sections' ? 'btn-active' : ''}`}
+                onClick={() => togglePanel('sections')}>Sections</button>
+              <button className={`btn bottom-btn ${state.activePanel === 'labels' ? 'btn-active' : ''}`}
+                onClick={() => togglePanel('labels')}>Labels</button>
+              <button className={`btn bottom-btn ${state.activePanel === 'timeSigs' ? 'btn-active' : ''}`}
+                onClick={() => togglePanel('timeSigs')}>Time sigs</button>
+              <button className={`btn bottom-btn`}
+                onClick={() => { setState(s => ({ ...s, editMode: 'rehearsalMarks', selectedPhraseIndex: null, activePanel: null })); }}>
+                Reh. marks
+              </button>
+              <button className={`btn bottom-btn ${state.activePanel === 'repeats' ? 'btn-active' : ''}`}
+                onClick={() => togglePanel('repeats')}>Barlines</button>
+              <button className={`btn bottom-btn ${state.activePanel === 'fermatas' ? 'btn-active' : ''}`}
+                onClick={() => togglePanel('fermatas')}>Fermatas</button>
+            </div>
+          </div>
         </div>
 
         {state.activePanel === 'sections' && (
@@ -721,19 +790,19 @@ export default function App() {
           />
         )}
 
-        {state.activePanel === 'annotations' && (
-          <AnnotationPanel
+        {state.activePanel === 'labels' && (
+          <LabelPanel
             onClose={closePanel}
-            annotations={state.annotations}
-            onAddAnnotation={handleAddAnnotation}
-            onRemoveAnnotation={handleRemoveAnnotation}
-            onUpdateAnnotation={handleUpdateAnnotation}
+            labels={state.labels}
+            onAddLabel={handleAddLabel}
+            onRemoveLabel={handleRemoveLabel}
+            onUpdateLabel={handleUpdateLabel}
             onBarFieldFocus={handleBarFieldFocus}
             pickedBar={state.pickedBar}
             layoutRows={layout.rows}
-            requestEditId={state.activeAnnotationId}
-            onEditChange={handleAnnotationEditChange}
-            prefillBar={state.prefillAnnotationBar}
+            requestEditId={state.activeLabelId}
+            onEditChange={handleLabelEditChange}
+            prefillBar={state.prefillLabelBar}
           />
         )}
 
@@ -746,6 +815,32 @@ export default function App() {
             onUpdate={handleUpdateTimeSig}
             onBarFieldFocus={handleBarFieldFocus}
             pickedBar={state.pickedBar}
+          />
+        )}
+
+        {state.activePanel === 'repeats' && (
+          <RepeatsPanel
+            onClose={closePanel}
+            repeats={state.repeats}
+            onAdd={handleAddRepeat}
+            onRemove={handleRemoveRepeat}
+            onUpdate={handleUpdateRepeat}
+            onBarFieldFocus={handleBarFieldFocus}
+            pickedBar={state.pickedBar}
+            layoutRows={layout.rows}
+          />
+        )}
+
+        {state.activePanel === 'fermatas' && (
+          <FermataPanel
+            onClose={closePanel}
+            fermatas={state.fermatas}
+            onAdd={handleAddFermata}
+            onRemove={handleRemoveFermata}
+            onUpdate={handleUpdateFermata}
+            onBarFieldFocus={handleBarFieldFocus}
+            pickedBar={state.pickedBar}
+            layoutRows={layout.rows}
           />
         )}
       </div>

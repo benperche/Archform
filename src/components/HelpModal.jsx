@@ -12,7 +12,7 @@ export default function HelpModal({ onClose }) {
           <section className="help-section">
             <p className="help-intro">
               Archform is a tool for making phrase diagrams — visual maps of how a piece of music
-              is structured. Each slur arch represents a phrase; sections and annotations let you
+              is structured. Each slur arch represents a phrase; sections and labels let you
               layer in as much analytical detail as you need.
             </p>
           </section>
@@ -73,13 +73,13 @@ export default function HelpModal({ onClose }) {
           </section>
 
           <section className="help-section">
-            <h3>4 — Add annotations (below the diagram)</h3>
+            <h3>4 — Add labels (below the diagram)</h3>
             <p>
-              Open the <strong>Annotations</strong> panel. Annotations are free-text labels that appear
+              Open the <strong>Labels</strong> panel. Labels are free-text items that appear
               <em> below</em> the slur rows, pinned to a bar position.
             </p>
             <p>
-              You can include note symbols in annotation text using shorthand codes:
+              You can include note symbols in label text using shorthand codes:
             </p>
             <div className="help-note-table">
               <div className="help-note-row"><code>w</code><span>whole note (semibreve)</span></div>

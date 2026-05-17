@@ -155,6 +155,28 @@ body {
   box-shadow: 0 1px 2px rgba(0,0,0,0.1);
 }
 
+.mark-manual-add {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.mark-manual-input {
+  width: 64px;
+  padding: 4px 7px;
+  border: 1px solid #bfdbfe;
+  border-radius: 5px;
+  font-size: 12px;
+  background: white;
+  color: var(--text);
+}
+
+.mark-manual-input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px #bfdbfe;
+}
+
 /* ── Buttons ─────────────────────────────────────────────────── */
 
 .btn {
@@ -232,11 +254,39 @@ body {
 
 /* ── Quick entry ─────────────────────────────────────────────── */
 
-.quick-entry {
+/* ── Bottom area (phrase entry + panel buttons) ─────────────── */
+
+.bottom-area {
   flex-shrink: 0;
+  display: flex;
+  align-items: stretch;
   background: #fff;
   border-top: 1px solid var(--border);
-  padding: 8px 24px 10px;
+}
+
+.quick-entry {
+  flex: 0 0 66.666%;
+  padding: 8px 16px 10px 24px;
+  min-width: 0;
+}
+
+.bottom-panel-buttons {
+  flex: 0 0 33.333%;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5px;
+  padding: 10px 16px 10px 10px;
+  border-left: 1px solid var(--border);
+  align-content: center;
+}
+
+.bottom-btn {
+  width: 100%;
+  font-size: 12px;
+  padding: 5px 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .quick-entry-header {
@@ -856,8 +906,6 @@ body {
 .overlap-popover {
   position: fixed;
   z-index: 200;
-  transform: translate(-50%, -100%);
-  margin-top: -8px;
   background: white;
   border: 1px solid var(--border);
   border-radius: 8px;

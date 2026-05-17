@@ -1,8 +1,14 @@
 import { useState, useEffect, useRef } from 'react';
 
-export default function OverlapPopover({ startBar, value, position, onClose, onChange, onAddAnnotationHere, onAddSectionHere }) {
+// Estimated popover height (px) used to decide open-up vs open-down before the
+// element has rendered. Slightly over-estimated so we err on the side of opening
+// downward when near the top of the viewport.
+const POPOVER_ESTIMATED_HEIGHT = 200;
+
+export default function OverlapPopover({ startBar, value, position, onClose, onChange, onAddAnnotationHere: onAddLabelHere, onAddSectionHere }) {
   const [input, setInput] = useState(String(value || 0));
   const inputRef = useRef();
+  const popoverRef = useRef();
 
   // Sync input when value changes externally
   useEffect(() => { setInput(String(value || 0)); }, [value]);
@@ -33,13 +39,22 @@ export default function OverlapPopover({ startBar, value, position, onClose, onC
 
   if (!position) return null;
 
+  // Decide whether there's enough room above the anchor to open upward.
+  // Use the actual rendered height once available, otherwise fall back to estimate.
+  const actualHeight = popoverRef.current?.offsetHeight ?? POPOVER_ESTIMATED_HEIGHT;
+  const openBelow = position.yAbove - actualHeight < 8;
+  const posStyle = openBelow
+    ? { left: position.x, top: position.yBelow, transform: 'translateX(-50%)' }
+    : { left: position.x, top: position.yAbove, transform: 'translate(-50%, -100%)' };
+
   return (
     <>
       {/* click-away backdrop */}
       <div className="overlap-backdrop" onClick={onClose} />
       <div
+        ref={popoverRef}
         className="overlap-popover"
-        style={{ left: position.x, top: position.y }}
+        style={posStyle}
       >
         <div className="overlap-popover-header">
           <span>Phrase overlap</span>
@@ -70,8 +85,8 @@ export default function OverlapPopover({ startBar, value, position, onClose, onC
           </button>
         )}
         <div className="overlap-add-actions">
-          <button className="overlap-add-btn" onClick={() => { onAddAnnotationHere?.(startBar); onClose(); }}>
-            + Add annotation here
+          <button className="overlap-add-btn" onClick={() => { onAddLabelHere?.(startBar); onClose(); }}>
+            + Add label here
           </button>
           <button className="overlap-add-btn" onClick={() => { onAddSectionHere?.(startBar); onClose(); }}>
             + Add section here
