@@ -147,7 +147,9 @@ body {
 .diagram-area {
   flex: 1;
   min-width: 0;
-  padding: 24px 28px 12px;
+  /* No top padding: lets the sticky form-overview snap flush to the toolbar.
+     The top gap is provided by .zoom-controls / .form-overview instead. */
+  padding: 0 28px 12px;
   overflow-y: auto;
   overflow-x: hidden;
 }
@@ -177,6 +179,7 @@ body {
   display: flex;
   align-items: center;
   gap: 4px;
+  margin-top: 16px;
   margin-bottom: 10px;
 }
 
@@ -187,25 +190,37 @@ body {
   top: 0;
   z-index: 10;
   display: flex;
-  gap: 2px;
-  height: 24px;
-  margin: -8px 0 10px;
-  padding: 4px 0;
+  flex-direction: column;
+  gap: 3px;
+  /* Bleed to the diagram-area padding edges so the stuck bar reads full-width */
+  margin: 0 -28px 0;
+  padding: 14px 28px 10px;
   background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  box-shadow: 0 2px 4px -2px rgba(0, 0, 0, 0.08);
+}
+
+.form-overview-row {
+  display: flex;
+  gap: 2px;
+  height: 21px;
 }
 
 .form-overview-block {
   border: 1px solid;
   border-radius: 3px;
   padding: 0 6px;
-  min-width: 0;
+  /* Grow proportionally, but never shrink below the label width — short
+     sections widen just enough to stay readable rather than truncating. */
+  min-width: fit-content;
   flex-basis: 0;
   font-size: 10.5px;
   font-weight: 600;
   font-family: inherit;
   cursor: pointer;
+  display: flex;
+  align-items: center;
   overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
   transition: filter 0.1s;
 }
@@ -218,6 +233,7 @@ body {
 
 .form-overview-gap {
   flex-basis: 0;
+  min-width: 0;
   border-radius: 3px;
   background: #eceae4;
 }
