@@ -180,6 +180,48 @@ body {
   margin-bottom: 10px;
 }
 
+/* ── Form overview strip ─────────────────────────────────────── */
+
+.form-overview {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  gap: 2px;
+  height: 24px;
+  margin: -8px 0 10px;
+  padding: 4px 0;
+  background: var(--bg);
+}
+
+.form-overview-block {
+  border: 1px solid;
+  border-radius: 3px;
+  padding: 0 6px;
+  min-width: 0;
+  flex-basis: 0;
+  font-size: 10.5px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: filter 0.1s;
+}
+.form-overview-block:hover { filter: brightness(0.94); }
+
+.form-overview-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.form-overview-gap {
+  flex-basis: 0;
+  border-radius: 3px;
+  background: #eceae4;
+}
+
 .zoom-btn {
   font-size: 14px;
   padding: 2px 8px;
@@ -1041,6 +1083,37 @@ body {
   background: #fee2e2;
 }
 
+.overlap-theme-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px 2px;
+  border-top: 1px solid var(--border);
+  margin-top: 2px;
+}
+
+.overlap-theme-chips {
+  display: flex;
+  gap: 3px;
+  flex-wrap: wrap;
+}
+
+.theme-chip {
+  width: 20px;
+  height: 20px;
+  border: 1px solid;
+  border-radius: 4px;
+  background: white;
+  font-size: 10.5px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0;
+  transition: transform 0.08s;
+}
+.theme-chip:hover { transform: scale(1.12); }
+
 .overlap-add-actions {
   display: flex;
   flex-direction: column;
@@ -1329,19 +1402,69 @@ body {
 
 /* ── Row spacing handles ─────────────────────────────────────── */
 
-/* Make the grip slightly more visible on hover (SVG :hover works in modern browsers) */
+/* Make the grip clearly visible on hover (SVG :hover works in modern browsers) */
 svg g[style*="ns-resize"]:hover line {
-  stroke: #999;
+  stroke: #666;
+  stroke-width: 1.5;
 }
 svg g[style*="ns-resize"]:hover text {
-  fill: #999;
+  fill: #666;
 }
+
+/* ── Toast ───────────────────────────────────────────────────── */
+
+.toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  max-width: min(520px, calc(100vw - 32px));
+  padding: 10px 14px 10px 16px;
+  background: #2b2b2b;
+  color: #f5f5f5;
+  font-size: 13.5px;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.28);
+  z-index: 400;
+  animation: toast-in 0.18s ease-out;
+}
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translate(-50%, 8px); }
+  to   { opacity: 1; transform: translate(-50%, 0); }
+}
+
+.toast-action {
+  background: none;
+  border: none;
+  padding: 0;
+  color: #8ab8ff;
+  font-size: 13.5px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.toast-action:hover { text-decoration: underline; }
+
+.toast-close {
+  background: none;
+  border: none;
+  padding: 0 2px;
+  color: #888;
+  font-size: 12px;
+  cursor: pointer;
+}
+.toast-close:hover { color: #ccc; }
 
 /* ── Print ───────────────────────────────────────────────────── */
 
 @media print {
   .toolbar, .quick-entry, .side-panel, .file-sidebar,
-  .bottom-panel-buttons, .zoom-controls { display: none !important; }
+  .bottom-panel-buttons, .zoom-controls, .toast, .form-overview { display: none !important; }
   body { background: white; }
   .app { height: auto; overflow: visible; }
   .content-area { overflow: visible; }

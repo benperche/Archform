@@ -19,7 +19,7 @@ export default function QuickEntry({ text, onChange, phrases, textSelection }) {
       <div className="quick-entry-header">
         <span className="quick-entry-label">Phrases</span>
         <span className="quick-entry-hint">
-          Lengths separated by spaces or commas · new line = new row · decimals for sub-beats
+          Lengths separated by spaces or commas · new line = new row · 7(4+3) = sub-phrases · decimals for sub-beats
         </span>
         {phrases.length > 0 && (
           <span className="quick-entry-stats">

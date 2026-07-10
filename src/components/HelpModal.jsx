@@ -31,6 +31,15 @@ export default function HelpModal({ onClose }) {
               Use <strong>parentheses</strong> to show how a phrase is sub-divided:
             </p>
             <div className="help-example">7(4+3){'  '}9(5+4){'  '}8(6+2)</div>
+            <p>
+              <strong>Click any slur arch</strong> on the diagram to select that phrase — a popover
+              appears where you can overlap it with the next phrase (for elided phrase endings),
+              give it a theme colour, or add a label or section at that spot.
+            </p>
+            <p>
+              Bar positions throughout the app accept halves — e.g. <code>12.5</code> places a
+              marking mid-way through bar 12.
+            </p>
             <p>The title and composer fields at the top are shown on the printed diagram.</p>
           </section>
 

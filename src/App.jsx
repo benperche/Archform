@@ -9,10 +9,12 @@ import OverlapPopover from './components/OverlapPopover';
 import TimeSignaturePanel from './components/TimeSignaturePanel';
 import RepeatsPanel from './components/RepeatsPanel';
 import FermataPanel from './components/FermataPanel';
+import KeyPanel from './components/KeyPanel';
 import RehearsalMarksPanel from './components/RehearsalMarksPanel';
 import FileSidebar from './components/FileSidebar';
+import FormOverview from './components/FormOverview';
 import { relabelMarks } from './utils/marks';
-import { parseQuickEntry, computeLayout, CANVAS_WIDTH } from './utils/layout';
+import { parseQuickEntry, computeLayout, barToPosition, CANVAS_WIDTH } from './utils/layout';
 import {
   loadIndex, saveIndex, loadFile, saveFile, deleteFile,
   migrateLegacy, genId, fileName,
@@ -36,6 +38,9 @@ function decodeShare(encoded) {
   } catch { return null; }
 }
 
+// Guard against oversized share URLs hanging the tab on load
+const MAX_SHARE_HASH_LENGTH = 200_000;
+
 // ── State shape ───────────────────────────────────────────────
 
 const defaultDiagramState = {
@@ -47,9 +52,11 @@ const defaultDiagramState = {
   structuralMarkers: [],
   labels: [],
   phraseOverlaps: {},
+  phraseThemes: {},
   timeSignatures: [],
   repeats: [],
   fermatas: [],
+  keyChanges: [],
   rowSpacing: {},
 };
 
@@ -65,18 +72,65 @@ const defaultTransient = {
   activeRepeatId: null,
   activeFermataId: null,
   activeTimeSigId: null,
+  activeKeyId: null,
   prefillLabelBar: null,
   prefillSectionBar: null,
 };
 
 const defaultState = { ...defaultDiagramState, ...defaultTransient };
 
+// Seeded as the very first file on a fresh install so new users see a worked
+// example instead of a blank canvas. Safe to delete; New file stays blank.
+const sampleDiagram = {
+  ...defaultDiagramState,
+  title: 'Minuet (example)',
+  composer: '',
+  quickEntryText: '4 4\n4 4 8(4+4)',
+  timeSignatures: [{ id: 'ts-sample1', numerator: 3, denominator: 4, bar: 1 }],
+  structuralMarkers: [
+    { id: 's-sample1', label: 'A', startBar: 1, endBar: 9, level: 0, color: '#1a1a1a' },
+    { id: 's-sample2', label: 'B', startBar: 9, endBar: 25, level: 0, color: '#2563eb' },
+  ],
+  labels: [{ id: 'l-sample1', bar: 1, text: 'q Theme' }],
+  repeats: [
+    { id: 'rp-sample1', bar: 9, type: 'end' },
+    { id: 'rp-sample2', bar: 25, type: 'final' },
+  ],
+};
+
 function getDiagramSnapshot(s) {
   // eslint-disable-next-line no-unused-vars
   const { selectedPhraseIndex, selectedTextRange, editMode, activePanel, barPickField, pickedBar,
           activeLabelId, activeSectionId, activeRepeatId, activeFermataId, activeTimeSigId,
-          prefillLabelBar, prefillSectionBar, ...data } = s;
+          activeKeyId, prefillLabelBar, prefillSectionBar, ...data } = s;
   return data;
+}
+
+// Coerce untrusted diagram data (imports, share links) to the expected shape
+// so a malformed payload can't crash the session or bloat storage.
+const asStr = (v, max = 50_000) => typeof v === 'string' ? v.slice(0, max) : '';
+const asArr = (v, max = 2_000) => Array.isArray(v) ? v.slice(0, max).filter(x => x && typeof x === 'object') : [];
+const asObj = v => (v && typeof v === 'object' && !Array.isArray(v)) ? v : {};
+
+function sanitizeDiagram(data) {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return { ...defaultDiagramState };
+  return {
+    title: asStr(data.title, 500),
+    composer: asStr(data.composer, 500),
+    quickEntryText: asStr(data.quickEntryText),
+    rehearsalMarks: asArr(data.rehearsalMarks),
+    rehearsalMarkStyle: ['letters', 'numbers', 'roman', 'bars'].includes(data.rehearsalMarkStyle)
+      ? data.rehearsalMarkStyle : 'letters',
+    structuralMarkers: asArr(data.structuralMarkers),
+    labels: asArr(data.labels ?? data.annotations),
+    phraseOverlaps: asObj(data.phraseOverlaps),
+    phraseThemes: asObj(data.phraseThemes),
+    timeSignatures: asArr(data.timeSignatures),
+    repeats: asArr(data.repeats),
+    fermatas: asArr(data.fermatas),
+    keyChanges: asArr(data.keyChanges),
+    rowSpacing: asObj(data.rowSpacing),
+  };
 }
 
 // ── File init singleton ───────────────────────────────────────
@@ -87,10 +141,10 @@ function getAppInit() {
 
   // Check for shared diagram in URL hash
   const hash = window.location.hash;
-  if (hash.startsWith('#share=')) {
+  if (hash.startsWith('#share=') && hash.length <= MAX_SHARE_HASH_LENGTH) {
     window.history.replaceState(null, '', window.location.pathname);
     const data = decodeShare(hash.slice(7));
-    if (data) {
+    if (data && typeof data === 'object' && !Array.isArray(data)) {
       let index = loadIndex();
       if (!index) {
         const baseId = genId();
@@ -98,8 +152,8 @@ function getAppInit() {
         saveFile(baseId, defaultDiagramState);
       }
       const id = genId();
-      const name = fileName(data.title, data.composer);
-      const diagram = { ...defaultDiagramState, ...data };
+      const diagram = sanitizeDiagram(data);
+      const name = fileName(diagram.title, diagram.composer);
       saveFile(id, diagram);
       const newIndex = { ...index, currentId: id, files: [...index.files, { id, name, updatedAt: Date.now(), folderId: null }], folders: index.folders || [] };
       saveIndex(newIndex);
@@ -119,10 +173,11 @@ function getAppInit() {
     return _appInit;
   }
   const id = genId();
-  const newIndex = { currentId: id, files: [{ id, name: 'Untitled', updatedAt: Date.now(), folderId: null }], folders: [] };
+  const name = fileName(sampleDiagram.title, sampleDiagram.composer);
+  const newIndex = { currentId: id, files: [{ id, name, updatedAt: Date.now(), folderId: null }], folders: [] };
   saveIndex(newIndex);
-  saveFile(id, defaultDiagramState);
-  _appInit = { index: newIndex, diagram: defaultDiagramState };
+  saveFile(id, sampleDiagram);
+  _appInit = { index: newIndex, diagram: sampleDiagram };
   return _appInit;
 }
 
@@ -144,6 +199,19 @@ export default function App() {
   });
   const [zoom, setZoom] = useState(100);
   const diagramAreaRef = useRef(null);
+
+  // ── Toast (transient notification, optionally with an action) ─
+  const [toast, setToast] = useState(null);
+  const toastTimer = useRef(null);
+  const showToast = useCallback((message, opts = {}) => {
+    clearTimeout(toastTimer.current);
+    setToast({ message, actionLabel: opts.actionLabel, onAction: opts.onAction });
+    toastTimer.current = setTimeout(() => setToast(null), opts.duration ?? 6000);
+  }, []);
+  const dismissToast = useCallback(() => {
+    clearTimeout(toastTimer.current);
+    setToast(null);
+  }, []);
 
   // Cmd/Ctrl + scroll on the diagram area controls zoom.
   // Must be attached imperatively so we can pass { passive: false } and call preventDefault.
@@ -228,10 +296,17 @@ export default function App() {
   const svgRef = useRef(null);
 
   // ── Auto-save + file name sync ──────────────────────────────
+  const storageWarnedRef = useRef(false);
   useEffect(() => {
     const id = currentIdRef.current;
     const toSave = getDiagramSnapshot(state);
-    saveFile(id, toSave);
+    const saved = saveFile(id, toSave);
+    if (!saved && !storageWarnedRef.current) {
+      storageWarnedRef.current = true;
+      showToast('Storage is full — changes are not being saved. Export your work as JSON to be safe.', { duration: 12000 });
+    } else if (saved) {
+      storageWarnedRef.current = false;
+    }
     const name = fileName(state.title, state.composer);
     setFileIndex(prev => {
       const currentFile = prev.files.find(f => f.id === id);
@@ -250,7 +325,7 @@ export default function App() {
     const handler = e => {
       const mod = e.metaKey || e.ctrlKey;
       if (e.key === 'Escape') {
-        if (state.activePanel === 'rehearsalMarks') setState(s => ({ ...s, activePanel: null }));
+        if (state.activePanel) setState(s => ({ ...s, activePanel: null, barPickField: null, pickedBar: null }));
         else if (state.editMode) setState(s => ({ ...s, editMode: null }));
       }
       if (mod && e.key === 'z' && !e.shiftKey) { e.preventDefault(); undo(); }
@@ -258,7 +333,7 @@ export default function App() {
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [state.editMode, undo, redo]);
+  }, [state.editMode, state.activePanel, undo, redo]);
 
   // Defer the text so rapid keystrokes don't block the main thread with
   // expensive parse+layout+SVG-render cycles on every character.
@@ -268,9 +343,10 @@ export default function App() {
     [deferredText]
   );
 
+  const hasKeyLane = state.keyChanges.length > 0;
   const layout = useMemo(
-    () => computeLayout(phrases, lineBreakIndices, state.structuralMarkers, state.phraseOverlaps, state.rowSpacing),
-    [phrases, lineBreakIndices, state.structuralMarkers, state.phraseOverlaps, state.rowSpacing]
+    () => computeLayout(phrases, lineBreakIndices, state.structuralMarkers, state.phraseOverlaps, state.rowSpacing, { hasKeyLane }),
+    [phrases, lineBreakIndices, state.structuralMarkers, state.phraseOverlaps, state.rowSpacing, hasKeyLane]
   );
 
   // Overlap popover position (fixed coordinates derived from SVG rect)
@@ -298,6 +374,15 @@ export default function App() {
       return { ...s, phraseOverlaps: next };
     });
   }, []);
+
+  const handleThemeChange = useCallback((startBar, letter) => {
+    recordHistory();
+    setState(s => {
+      const next = { ...s.phraseThemes };
+      if (!letter) delete next[startBar]; else next[startBar] = letter;
+      return { ...s, phraseThemes: next };
+    });
+  }, [recordHistory]);
 
   const handleRowSpacingChange = useCallback((firstBar, px) => {
     setState(s => {
@@ -346,6 +431,14 @@ export default function App() {
 
   const handleTimeSigCanvasClick = useCallback((id) => {
     setState(s => ({ ...s, activePanel: 'timeSigs', activeTimeSigId: id, barPickField: null, pickedBar: null }));
+  }, []);
+
+  const handleKeyCanvasClick = useCallback((id) => {
+    setState(s => ({ ...s, activePanel: 'keys', activeKeyId: id, barPickField: null, pickedBar: null }));
+  }, []);
+
+  const handleKeyEditChange = useCallback((id) => {
+    setState(s => ({ ...s, activeKeyId: id ?? null }));
   }, []);
 
   const handleRepeatEditChange = useCallback((id) => {
@@ -441,16 +534,20 @@ export default function App() {
   }, []);
 
   const handleDeleteFile = useCallback((id) => {
+    // Stash the file so the toast's Undo can restore it — deletion is
+    // otherwise permanent (localStorage remove, outside diagram history).
+    const entry = fileIndex.files.find(f => f.id === id);
+    const wasActive = fileIndex.currentId === id;
+    const data = loadFile(id);
     deleteFile(id);
     setFileIndex(prev => {
       const remaining = prev.files.filter(f => f.id !== id);
-      const wasActive = prev.currentId === id;
       let newCurrentId = prev.currentId;
-      if (wasActive && remaining.length > 0) {
+      if (prev.currentId === id && remaining.length > 0) {
         newCurrentId = remaining[remaining.length - 1].id;
         currentIdRef.current = newCurrentId;
-        const data = loadFile(newCurrentId) ?? defaultDiagramState;
-        const merged = { ...defaultState, ...data, labels: data.labels ?? data.annotations ?? [] };
+        const next = loadFile(newCurrentId) ?? defaultDiagramState;
+        const merged = { ...defaultState, ...next, labels: next.labels ?? next.annotations ?? [] };
         historyRef.current = { stack: [getDiagramSnapshot(merged)], index: 0 };
         setState(merged);
       }
@@ -458,7 +555,29 @@ export default function App() {
       saveIndex(updated);
       return updated;
     });
-  }, []);
+    showToast(`Deleted “${entry?.name ?? 'file'}”`, {
+      actionLabel: 'Undo',
+      onAction: () => {
+        if (data) saveFile(id, data);
+        setFileIndex(prev => {
+          const updated = {
+            ...prev,
+            currentId: wasActive ? id : prev.currentId,
+            files: [...prev.files, entry ?? { id, name: 'Untitled', updatedAt: Date.now(), folderId: null }],
+          };
+          saveIndex(updated);
+          return updated;
+        });
+        if (wasActive) {
+          const restored = data ?? defaultDiagramState;
+          const merged = { ...defaultState, ...restored, labels: restored.labels ?? restored.annotations ?? [] };
+          currentIdRef.current = id;
+          historyRef.current = { stack: [getDiagramSnapshot(merged)], index: 0 };
+          setState(merged);
+        }
+      },
+    });
+  }, [fileIndex, showToast]);
 
   // ── Folder handlers ─────────────────────────────────────────
   const handleAddFolder = useCallback((name) => {
@@ -471,6 +590,8 @@ export default function App() {
   }, []);
 
   const handleDeleteFolder = useCallback((id) => {
+    const folder = fileIndex.folders?.find(f => f.id === id);
+    const memberIds = fileIndex.files.filter(f => f.folderId === id).map(f => f.id);
     setFileIndex(prev => {
       const updated = {
         ...prev,
@@ -480,7 +601,25 @@ export default function App() {
       saveIndex(updated);
       return updated;
     });
-  }, []);
+    const suffix = memberIds.length
+      ? ` — ${memberIds.length} file${memberIds.length > 1 ? 's' : ''} moved to Ungrouped`
+      : '';
+    showToast(`Deleted folder “${folder?.name ?? ''}”${suffix}`, {
+      actionLabel: 'Undo',
+      onAction: () => {
+        if (!folder) return;
+        setFileIndex(prev => {
+          const updated = {
+            ...prev,
+            folders: [...prev.folders, folder],
+            files: prev.files.map(f => memberIds.includes(f.id) ? { ...f, folderId: id } : f),
+          };
+          saveIndex(updated);
+          return updated;
+        });
+      },
+    });
+  }, [fileIndex, showToast]);
 
   const handleRenameFolder = useCallback((id, name) => {
     setFileIndex(prev => {
@@ -620,6 +759,21 @@ export default function App() {
     setState(s => ({ ...s, fermatas: s.fermatas.map(f => f.id === id ? { ...f, ...updates } : f) }));
   }, [recordHistory]);
 
+  const handleAddKey = useCallback((key) => {
+    recordHistory();
+    setState(s => ({ ...s, keyChanges: [...s.keyChanges, { id: `k${Date.now()}`, ...key }] }));
+  }, [recordHistory]);
+
+  const handleRemoveKey = useCallback((id) => {
+    recordHistory();
+    setState(s => ({ ...s, keyChanges: s.keyChanges.filter(k => k.id !== id) }));
+  }, [recordHistory]);
+
+  const handleUpdateKey = useCallback((id, updates) => {
+    recordHistory();
+    setState(s => ({ ...s, keyChanges: s.keyChanges.map(k => k.id === id ? { ...k, ...updates } : k) }));
+  }, [recordHistory]);
+
   const handleAddTimeSig = useCallback((ts) => {
     recordHistory();
     setState(s => ({ ...s, timeSignatures: [...s.timeSignatures, { id: `ts${Date.now()}`, ...ts }] }));
@@ -730,22 +884,27 @@ export default function App() {
     const reader = new FileReader();
     reader.onload = e => {
       try {
-        const data = JSON.parse(e.target.result);
-        recordHistory();
-        setState({
-          ...defaultState,
-          title: data.title ?? '',
-          composer: data.composer ?? '',
-          quickEntryText: data.quickEntryText ?? '',
-          rehearsalMarks: data.rehearsalMarks ?? [],
-          rehearsalMarkStyle: data.rehearsalMarkStyle ?? 'letters',
-          structuralMarkers: data.structuralMarkers ?? [],
-          labels: data.labels ?? data.annotations ?? [],
-          timeSignatures: data.timeSignatures ?? [],
-          repeats: data.repeats ?? [],
-          fermatas: data.fermatas ?? [],
-          rowSpacing: data.rowSpacing ?? {},
+        const raw = JSON.parse(e.target.result);
+        if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throw new Error('not a diagram');
+        // Import as a new file rather than overwriting the current diagram
+        const diagram = sanitizeDiagram(raw);
+        const id = genId();
+        const name = fileName(diagram.title, diagram.composer);
+        saveFile(id, diagram);
+        const merged = { ...defaultState, ...diagram };
+        currentIdRef.current = id;
+        historyRef.current = { stack: [getDiagramSnapshot(merged)], index: 0 };
+        setFileIndex(prev => {
+          const updated = {
+            ...prev,
+            currentId: id,
+            files: [...prev.files, { id, name, updatedAt: Date.now(), folderId: null }],
+          };
+          saveIndex(updated);
+          return updated;
         });
+        setState(merged);
+        showToast(`Imported “${name}” as a new file`);
       } catch {
         alert('Could not read that file — make sure it is an Archform JSON export.');
       }
@@ -762,14 +921,42 @@ export default function App() {
     navigator.clipboard.writeText(url).then(() => {
       setShareCopied(true);
       setTimeout(() => setShareCopied(false), 2000);
+      if (url.length > 64_000) {
+        showToast('This diagram is very large — the share link may not work in every browser. JSON export is more reliable.', { duration: 8000 });
+      }
     });
-  }, [state]);
+  }, [state, showToast]);
+
+  // Scroll the main view to a bar when a form-overview block is clicked.
+  const handleOverviewNavigate = useCallback((bar) => {
+    const area = diagramAreaRef.current;
+    const svg = svgRef.current;
+    if (!area || !svg) return;
+    const pos = barToPosition(bar, layout.rows);
+    const row = pos ? layout.rows[pos.rowIndex] : null;
+    if (!row) return;
+    // getBoundingClientRect deltas keep this correct at any zoom level
+    const scale = svg.getBoundingClientRect().width / CANVAS_WIDTH;
+    const svgTop = svg.getBoundingClientRect().top - area.getBoundingClientRect().top + area.scrollTop;
+    area.scrollTo({ top: Math.max(0, svgTop + row.rowY * scale - 56), behavior: 'smooth' });
+  }, [layout]);
 
   const barPickMode = !!state.activePanel && !!state.barPickField;
 
   return (
     <div className="app">
       {showHelp && <HelpModal onClose={() => { localStorage.setItem(HELP_SEEN_KEY, '1'); setShowHelp(false); }} />}
+      {toast && (
+        <div className="toast" role="status">
+          <span className="toast-message">{toast.message}</span>
+          {toast.actionLabel && (
+            <button className="toast-action" onClick={() => { toast.onAction?.(); dismissToast(); }}>
+              {toast.actionLabel}
+            </button>
+          )}
+          <button className="toast-close" onClick={dismissToast} title="Dismiss">✕</button>
+        </div>
+      )}
       <Toolbar
         state={state}
         setState={setState}
@@ -804,6 +991,11 @@ export default function App() {
         )}
         <div className="left-side">
           <div className="diagram-area" ref={diagramAreaRef}>
+            <FormOverview
+              sections={state.structuralMarkers}
+              layoutRows={layout.rows}
+              onNavigate={handleOverviewNavigate}
+            />
             <div className="zoom-controls">
               <button className="btn zoom-btn" onClick={() => setZoom(z => Math.max(50, z - 10))} title="Zoom out">−</button>
               <span className="zoom-label">{zoom}%</span>
@@ -822,6 +1014,7 @@ export default function App() {
               labels={state.labels}
               repeats={state.repeats}
               fermatas={state.fermatas}
+              phraseThemes={state.phraseThemes}
               selectedPhraseIndex={state.selectedPhraseIndex}
               editMode={state.activePanel === 'rehearsalMarks' ? 'rehearsalMarks' : state.editMode}
               barPickMode={barPickMode}
@@ -839,19 +1032,24 @@ export default function App() {
               activeRepeatId={state.activeRepeatId}
               activeFermataId={state.activeFermataId}
               activeTimeSigId={state.activeTimeSigId}
+              keyChanges={state.keyChanges}
+              activeKeyId={state.activeKeyId}
               onLabelClick={handleLabelCanvasClick}
               onSectionClick={handleSectionCanvasClick}
               onRepeatClick={handleRepeatCanvasClick}
               onFermataClick={handleFermataCanvasClick}
               onTimeSigClick={handleTimeSigCanvasClick}
+              onKeyClick={handleKeyCanvasClick}
             />
             {state.selectedPhraseIndex != null && overlapPopoverPos && !state.editMode && (
               <OverlapPopover
                 startBar={phrases[state.selectedPhraseIndex]?.startBar}
                 value={state.phraseOverlaps[phrases[state.selectedPhraseIndex]?.startBar] || 0}
+                theme={state.phraseThemes[phrases[state.selectedPhraseIndex]?.startBar] || null}
                 position={overlapPopoverPos}
                 onClose={() => setState(s => ({ ...s, selectedPhraseIndex: null, selectedTextRange: null }))}
                 onChange={handleOverlapChange}
+                onThemeChange={handleThemeChange}
                 onAddAnnotationHere={handleAddLabelHere}
                 onAddSectionHere={handleAddSectionHere}
               />
@@ -893,6 +1091,8 @@ export default function App() {
                 onClick={() => togglePanel('repeats')}>Barlines & repeats</button>
               <button className={`btn bottom-btn ${state.activePanel === 'fermatas' ? 'btn-active' : ''}`}
                 onClick={() => togglePanel('fermatas')}>Fermatas &amp; breaks</button>
+              <button className={`btn bottom-btn ${state.activePanel === 'keys' ? 'btn-active' : ''}`}
+                onClick={() => togglePanel('keys')}>Keys</button>
             </div>
           </div>
         </div>
@@ -971,6 +1171,21 @@ export default function App() {
             layoutRows={layout.rows}
             requestEditId={state.activeFermataId}
             onEditChange={handleFermataEditChange}
+          />
+        )}
+
+        {state.activePanel === 'keys' && (
+          <KeyPanel
+            onClose={closePanel}
+            keyChanges={state.keyChanges}
+            onAdd={handleAddKey}
+            onRemove={handleRemoveKey}
+            onUpdate={handleUpdateKey}
+            onBarFieldFocus={handleBarFieldFocus}
+            pickedBar={state.pickedBar}
+            layoutRows={layout.rows}
+            requestEditId={state.activeKeyId}
+            onEditChange={handleKeyEditChange}
           />
         )}
       </div>

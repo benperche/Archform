@@ -3,8 +3,8 @@
   "configurations": [
     {
       "name": "phrase-diagrams",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["-c", "PATH=/usr/local/opt/node@20/bin:$PATH npm run dev"],
       "port": 5173
     }
   ]

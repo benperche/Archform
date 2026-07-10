@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
+import { THEME_LETTERS, THEME_COLORS } from '../utils/themes';
 
 // Estimated popover height (px) used to decide open-up vs open-down before the
 // element has rendered. Slightly over-estimated so we err on the side of opening
 // downward when near the top of the viewport.
-const POPOVER_ESTIMATED_HEIGHT = 200;
+const POPOVER_ESTIMATED_HEIGHT = 245;
 
-export default function OverlapPopover({ startBar, value, position, onClose, onChange, onAddAnnotationHere: onAddLabelHere, onAddSectionHere }) {
+export default function OverlapPopover({ startBar, value, position, onClose, onChange, theme, onThemeChange, onAddAnnotationHere: onAddLabelHere, onAddSectionHere }) {
   const [input, setInput] = useState(String(value || 0));
   const inputRef = useRef();
   const popoverRef = useRef();
@@ -84,6 +85,27 @@ export default function OverlapPopover({ startBar, value, position, onClose, onC
             Remove overlap
           </button>
         )}
+        <div className="overlap-theme-row">
+          <span className="overlap-label">Theme</span>
+          <div className="overlap-theme-chips">
+            {THEME_LETTERS.map(letter => {
+              const active = theme === letter;
+              return (
+                <button
+                  key={letter}
+                  className={`theme-chip${active ? ' theme-chip--active' : ''}`}
+                  style={active
+                    ? { background: THEME_COLORS[letter], borderColor: THEME_COLORS[letter], color: 'white' }
+                    : { color: THEME_COLORS[letter], borderColor: `${THEME_COLORS[letter]}66` }}
+                  title={active ? `Remove theme ${letter}` : `Tag as theme ${letter}`}
+                  onClick={() => onThemeChange?.(startBar, active ? null : letter)}
+                >
+                  {letter}
+                </button>
+              );
+            })}
+          </div>
+        </div>
         <div className="overlap-add-actions">
           <button className="overlap-add-btn" onClick={() => { onAddLabelHere?.(startBar); onClose(); }}>
             + Add label here

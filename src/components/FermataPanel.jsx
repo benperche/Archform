@@ -67,8 +67,8 @@ export default function FermataPanel({
   };
   const cancelEdit = () => { setEditingId(null); setEditBar(''); setEditType('fermata'); };
 
-  const handleKey = e => { if (e.key === 'Enter') handleAdd(); if (e.key === 'Escape') cancelEdit(); };
-  const handleEditKey = e => { if (e.key === 'Enter') saveEdit(); if (e.key === 'Escape') cancelEdit(); };
+  const handleKey = e => { if (e.key === 'Enter') handleAdd(); if (e.key === 'Escape' && editingId) { e.stopPropagation(); cancelEdit(); } };
+  const handleEditKey = e => { if (e.key === 'Enter') saveEdit(); if (e.key === 'Escape') { e.stopPropagation(); cancelEdit(); } };
 
   return (
     <div className="side-panel">

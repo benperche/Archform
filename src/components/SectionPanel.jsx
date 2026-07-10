@@ -128,8 +128,11 @@ export default function SectionPanel({
 
   const cancelEdit = () => { setEditingId(null); setEditFields({}); };
 
-  const handleKey = e => { if (e.key === 'Enter') handleAdd(); if (e.key === 'Escape') cancelEdit(); };
-  const handleEditKey = e => { if (e.key === 'Enter') saveEdit(); if (e.key === 'Escape') cancelEdit(); };
+  // Escape while editing cancels the edit only (stopPropagation keeps the
+  // global Escape-closes-panel handler from also firing); otherwise it bubbles
+  // up and closes the panel.
+  const handleKey = e => { if (e.key === 'Enter') handleAdd(); if (e.key === 'Escape' && editingId) { e.stopPropagation(); cancelEdit(); } };
+  const handleEditKey = e => { if (e.key === 'Enter') saveEdit(); if (e.key === 'Escape') { e.stopPropagation(); cancelEdit(); } };
 
   return (
     <div className="side-panel">

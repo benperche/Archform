@@ -105,10 +105,16 @@ function rowTopPaddingForLevels(levelSet) {
   return n === 0 ? 0 : (n - 1) * 26 + 30;
 }
 
-export function computeLayout(phrases, lineBreakIndices, structuralMarkers = [], phraseOverlaps = {}, rowSpacing = {}) {
+// Key lane: slim band under each row showing key regions, only present
+// when the diagram has key changes.
+const KEY_LANE_HEIGHT = 16;
+const KEY_LANE_GAP = 8;
+
+export function computeLayout(phrases, lineBreakIndices, structuralMarkers = [], phraseOverlaps = {}, rowSpacing = {}, opts = {}) {
   if (!phrases.length) {
     return { rows: [], totalHeight: HEADER_HEIGHT + 60, CANVAS_WIDTH, HEADER_HEIGHT, PADDING };
   }
+  const keyLaneExtra = opts.hasKeyLane ? KEY_LANE_GAP + KEY_LANE_HEIGHT : 0;
 
   // Group phrases into rows
   const rows = [];
@@ -146,7 +152,7 @@ export function computeLayout(phrases, lineBreakIndices, structuralMarkers = [],
 
     const levelSet = rowLevelSets[rowIndex];
     const topPadding = rowTopPaddingForLevels(levelSet);
-    const rowHeight = BASE_ROW_HEIGHT + topPadding;
+    const rowHeight = BASE_ROW_HEIGHT + topPadding + keyLaneExtra;
     const totalBars = row.reduce((sum, p) => sum + p.length, 0);
     const barWidth = USABLE_WIDTH / totalBars;
     const rowY = yOffset;
@@ -193,7 +199,10 @@ export function computeLayout(phrases, lineBreakIndices, structuralMarkers = [],
       return { ...phrase, x: px, visualX, overlapPx, width, slurY, subPhrasePositions };
     });
 
-    return { phrases: positionedPhrases, rowY, slurY, rowIndex, rowEndX: x, rowHeight, levelSet, extraGap };
+    // Key lane band sits below the label zone (labels render at slurY+33)
+    const keyLaneY = opts.hasKeyLane ? slurY + 41 : null;
+
+    return { phrases: positionedPhrases, rowY, slurY, keyLaneY, rowIndex, rowEndX: x, rowHeight, levelSet, extraGap };
   });
 
   return {

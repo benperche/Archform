@@ -1,6 +1,7 @@
 import { useMemo, useState, useEffect, useCallback } from 'react';
 import { NoteGlyph, NoteText } from './NoteGlyphs';
 import { barToPosition, barToPositionEnd, formatBar, formatLength, xToNearestPhrase, CANVAS_WIDTH, PADDING } from '../utils/layout';
+import { THEME_LETTERS, THEME_COLORS, THEME_FILL_OPACITY } from '../utils/themes';
 
 // Y on a cubic bezier with control-point y values: slurY, cpY, cpY, slurY
 function bezierY(t, slurY, cpY) {
@@ -23,7 +24,7 @@ function mainArchParams(x, width, slurY) {
 // A main phrase slur with center length label, ticks, and start bar number.
 // visualX: left edge of the arch (shifted left when there is an overlap).
 // x: nominal bar position (used for bar labels and rehearsal mark placement).
-function Slur({ x, visualX, width, slurY, startBar, length, isLastInRow, endBar, overlapPx, selected, editMode, hasMarkAtBar, hideBarNum, hideStartTick, hideEndTick, onClick, onStartClick }) {
+function Slur({ x, visualX, width, slurY, startBar, length, isLastInRow, endBar, overlapPx, selected, editMode, hasMarkAtBar, hideBarNum, hideStartTick, hideEndTick, themeColor, themeLetter, onClick, onStartClick }) {
   const [hovered, setHovered] = useState(false);
   const hasOverlap = overlapPx > 0;
   const { x1, x2, cpY, cp1x, cp2x } = mainArchParams(visualX, width, slurY);
@@ -34,7 +35,7 @@ function Slur({ x, visualX, width, slurY, startBar, length, isLastInRow, endBar,
   const nx = x + 1;
 
   const inMarkMode = editMode === 'rehearsalMarks';
-  const stroke = selected ? '#2563eb' : (hovered ? '#4878cf' : '#1a1a1a');
+  const stroke = selected ? '#2563eb' : (hovered ? '#4878cf' : (themeColor ?? '#1a1a1a'));
 
   // Width of the bar number string in px (approx, for hit rect sizing)
   const bnStr = formatBar(startBar);
@@ -54,8 +55,31 @@ function Slur({ x, visualX, width, slurY, startBar, length, isLastInRow, endBar,
         onClick={onClick}
       />
 
+      {/* Theme wash — the arch region filled with the theme colour */}
+      {themeColor && (
+        <path
+          d={`${d} Z`}
+          fill={themeColor}
+          fillOpacity={THEME_FILL_OPACITY}
+          style={{ pointerEvents: 'none' }}
+        />
+      )}
+
       {/* Slur arc */}
       <path d={d} fill="none" stroke={stroke} strokeWidth={selected ? 2 : 1.5} strokeLinecap="round" />
+
+      {/* Theme letter at the left foot of the arch */}
+      {themeLetter && (
+        <text
+          x={x1 + 8} y={slurY - 6}
+          fontSize={10} fontStyle="italic" fontWeight="600"
+          fontFamily="Georgia, 'Times New Roman', serif"
+          fill={themeColor}
+          style={{ pointerEvents: 'none', userSelect: 'none' }}
+        >
+          {themeLetter}
+        </text>
+      )}
 
       {/* Start tick (at visual start) — hidden when a repeat barline sits here */}
       {!hideStartTick && (
@@ -432,6 +456,8 @@ export default function DiagramCanvas({
   labels = [],
   repeats = [],
   fermatas = [],
+  keyChanges = [],
+  phraseThemes = {},
   selectedPhraseIndex,
   editMode,
   barPickMode,
@@ -449,11 +475,13 @@ export default function DiagramCanvas({
   activeRepeatId,
   activeFermataId,
   activeTimeSigId,
+  activeKeyId,
   onLabelClick,
   onSectionClick,
   onRepeatClick,
   onFermataClick,
   onTimeSigClick,
+  onKeyClick,
 }) {
   const { rows, totalHeight, HEADER_HEIGHT } = layout;
   const W = CANVAS_WIDTH;
@@ -501,6 +529,17 @@ export default function DiagramCanvas({
     rows.forEach(row => row.phrases.forEach(p => s.add(p.startBar)));
     return s;
   }, [rows]);
+
+  // Theme letters actually shown on a rendered phrase (ignores stale keys
+  // left behind after phrase-text edits), in A–H order — drives the legend.
+  const usedThemes = useMemo(() => {
+    const s = new Set();
+    rows.forEach(row => row.phrases.forEach(p => {
+      const t = phraseThemes[p.startBar];
+      if (t && THEME_COLORS[t]) s.add(t);
+    }));
+    return THEME_LETTERS.filter(l => s.has(l));
+  }, [rows, phraseThemes]);
 
   const getBarPos = bar => barToPosition(bar, rows);
 
@@ -617,6 +656,7 @@ export default function DiagramCanvas({
             const isLast = i === row.phrases.length - 1;
             const endBar = phrase.startBar + phrase.length;
             const hasMarkHere = marksByBar.has(phrase.startBar);
+            const themeLetter = phraseThemes[phrase.startBar] ?? null;
             return (
               <g key={phrase.id}>
                 <Slur
@@ -629,6 +669,8 @@ export default function DiagramCanvas({
                   length={phrase.length}
                   endBar={endBar}
                   isLastInRow={isLast}
+                  themeLetter={themeLetter}
+                  themeColor={themeLetter ? THEME_COLORS[themeLetter] : null}
                   selected={phrase.phraseIndex === selectedPhraseIndex}
                   editMode={editMode}
                   hasMarkAtBar={hasMarkHere}
@@ -693,6 +735,66 @@ export default function DiagramCanvas({
             />
           );
         })}
+
+        {/* Key lane — tonal region bands beneath each row */}
+        {keyChanges.length > 0 && (() => {
+          const sortedKeys = [...keyChanges].sort((a, b) => a.bar - b.bar);
+          const clickable = !barPickMode && !editMode && !!onKeyClick;
+          return rows.map(row => {
+            if (row.keyLaneY == null) return null;
+            const rowStartBar = row.phrases[0].startBar;
+            const lastPhrase = row.phrases[row.phrases.length - 1];
+            const rowEndBar = lastPhrase.startBar + lastPhrase.length;
+
+            const governing = [...sortedKeys].reverse().find(k => k.bar <= rowStartBar);
+            const inRow = sortedKeys.filter(k => k.bar > rowStartBar && k.bar < rowEndBar);
+
+            const segments = [];
+            if (governing) {
+              // A change landing exactly on the row's first bar is a true change
+              // here, not a carry-over from the previous row.
+              const continues = governing.bar < rowStartBar;
+              segments.push({ x1: PADDING, changeId: governing.id, label: governing.label, isContinuation: continues });
+            }
+            inRow.forEach(k => {
+              const pos = barToPosition(k.bar, rows);
+              segments.push({ x1: pos.x, changeId: k.id, label: k.label, isContinuation: false });
+            });
+
+            return segments.map((seg, si) => {
+              const x2 = si < segments.length - 1 ? segments[si + 1].x1 : row.rowEndX;
+              const isActive = seg.changeId === activeKeyId;
+              const displayLabel = seg.isContinuation ? `(${seg.label})` : seg.label;
+              return (
+                <g key={`${row.rowIndex}-${seg.changeId}-${seg.x1}`}>
+                  <rect
+                    x={seg.x1} y={row.keyLaneY}
+                    width={x2 - seg.x1} height={16}
+                    rx={2}
+                    fill={isActive ? 'rgba(37,99,235,0.10)' : '#efece4'}
+                    style={clickable ? { cursor: 'pointer' } : undefined}
+                    onClick={clickable ? (e) => { e.stopPropagation(); onKeyClick(seg.changeId); } : undefined}
+                  />
+                  {!seg.isContinuation && (
+                    <line
+                      x1={seg.x1} y1={row.keyLaneY} x2={seg.x1} y2={row.keyLaneY + 16}
+                      stroke="#8a8578" strokeWidth={1}
+                    />
+                  )}
+                  <text
+                    x={seg.x1 + 6} y={row.keyLaneY + 11.5}
+                    fontSize={10} fontStyle="italic"
+                    fontFamily="Georgia, 'Times New Roman', serif"
+                    fill={isActive ? '#2563eb' : '#6b6558'}
+                    pointerEvents="none"
+                  >
+                    {displayLabel}
+                  </text>
+                </g>
+              );
+            });
+          });
+        })()}
 
         {/* Time signatures — rendered on top so white rects cover tick marks at boundaries */}
         {timeSignatures.map(ts => {
@@ -765,19 +867,19 @@ export default function DiagramCanvas({
               onMouseDown={e => startSpacingDrag(e, firstBar, extra)}
             >
               {/* Larger invisible hit target */}
-              <rect x={0} y={gripY - 8} width={PADDING - 4} height={16} fill="transparent" />
+              <rect x={0} y={gripY - 12} width={PADDING - 4} height={24} fill="transparent" />
               {/* Grip line */}
               <line
                 x1={6} y1={gripY} x2={PADDING - 6} y2={gripY}
-                stroke={active ? '#2563eb' : '#ccc'}
+                stroke={active ? '#2563eb' : '#b5b5b5'}
                 strokeWidth={active ? 1.5 : 1}
                 strokeDasharray="4,3"
               />
               {/* ↕ icon centred on the grip */}
               <text
-                x={PADDING / 2} y={gripY + 4}
-                textAnchor="middle" fontSize={8}
-                fill={active ? '#2563eb' : '#ccc'}
+                x={PADDING / 2} y={gripY + 4.5}
+                textAnchor="middle" fontSize={11}
+                fill={active ? '#2563eb' : '#b5b5b5'}
                 style={{ userSelect: 'none', pointerEvents: 'none' }}
               >
                 ↕
@@ -796,6 +898,27 @@ export default function DiagramCanvas({
             </g>
           );
         })}
+
+        {/* Theme legend — bottom left, on the watermark line (exported) */}
+        {usedThemes.length > 0 && (
+          <g
+            transform={`translate(${PADDING}, ${totalHeight - 28})`}
+            style={{ pointerEvents: 'none', userSelect: 'none' }}
+          >
+            {usedThemes.map((letter, i) => (
+              <g key={letter} transform={`translate(${i * 46}, 0)`}>
+                <rect x={0} y={-8} width={13} height={9} rx={2}
+                  fill={THEME_COLORS[letter]} fillOpacity={0.35}
+                  stroke={THEME_COLORS[letter]} strokeWidth={0.8} />
+                <text x={18} y={0} fontSize={10} fontStyle="italic"
+                  fontFamily="Georgia, 'Times New Roman', serif"
+                  fill={THEME_COLORS[letter]}>
+                  {letter}
+                </text>
+              </g>
+            ))}
+          </g>
+        )}
 
         {/* "Created with Archform" watermark — bottom centre, always visible */}
         <g

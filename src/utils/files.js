@@ -23,7 +23,10 @@ export function loadIndex() {
 }
 
 export function saveIndex(index) {
-  localStorage.setItem(INDEX_KEY, JSON.stringify(index));
+  try {
+    localStorage.setItem(INDEX_KEY, JSON.stringify(index));
+    return true;
+  } catch { return false; }
 }
 
 export function loadFile(id) {
@@ -34,7 +37,10 @@ export function loadFile(id) {
 }
 
 export function saveFile(id, data) {
-  localStorage.setItem(fileKey(id), JSON.stringify(data));
+  try {
+    localStorage.setItem(fileKey(id), JSON.stringify(data));
+    return true;
+  } catch { return false; }
 }
 
 export function deleteFile(id) {

@@ -80,7 +80,7 @@ export default function TimeSignaturePanel({
   const cancelEdit = () => { setEditingId(null); setEditFields({}); };
 
   const handleKey = e => { if (e.key === 'Enter') handleAdd(); };
-  const handleEditKey = e => { if (e.key === 'Enter') saveEdit(); if (e.key === 'Escape') cancelEdit(); };
+  const handleEditKey = e => { if (e.key === 'Enter') saveEdit(); if (e.key === 'Escape') { e.stopPropagation(); cancelEdit(); } };
 
   const sorted = [...timeSignatures].sort((a, b) => a.bar - b.bar);
 
