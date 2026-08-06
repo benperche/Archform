@@ -911,6 +911,27 @@ body {
 
 /* ── Export menu ─────────────────────────────────────────────── */
 
+/* Anchor for the absolutely-positioned dropdown below */
+.export-menu {
+  position: relative;
+}
+
+.export-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  /* Right-aligned: the Export button sits in the right-hand toolbar group,
+     so the panel opens leftward and can't spill off the window edge. */
+  right: 0;
+  z-index: 100;
+  background: white;
+  border: 1px solid #d0cdc7;
+  border-radius: 7px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  min-width: 200px;
+  max-width: 300px;
+  overflow: hidden;
+}
+
 .export-option {
   display: flex;
   align-items: baseline;

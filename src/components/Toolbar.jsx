@@ -10,12 +10,12 @@ function ExportMenu({ onExportJSON, onExportSVG, onExportPNG }) {
   };
 
   return (
-    <div className="file-menu" ref={ref} onBlur={handleBlur}>
+    <div className="export-menu" ref={ref} onBlur={handleBlur}>
       <button className={`btn ${open ? 'btn-active' : ''}`} onClick={() => setOpen(o => !o)}>
         Export ▾
       </button>
       {open && (
-        <div className="file-dropdown">
+        <div className="export-dropdown">
           <button className="export-option" onClick={() => { onExportJSON(); setOpen(false); }}>
             JSON <span className="export-option-hint">for re-importing</span>
           </button>
