@@ -920,7 +920,9 @@ export default function DiagramCanvas({
           </g>
         )}
 
-        {/* "Created with Archform" watermark — bottom centre, always visible */}
+        {/* "Created with Archform" watermark — bottom centre (hidden on the
+            empty state, where it would otherwise collide with the prompt) */}
+        {rows.length > 0 && (
         <g
           transform={`translate(${W / 2}, ${totalHeight - 28})`}
           style={{ pointerEvents: 'none', userSelect: 'none' }}
@@ -951,20 +953,21 @@ export default function DiagramCanvas({
             benperche.github.io/Archform
           </text>
         </g>
+        )}
 
         {/* Empty state */}
         {rows.length === 0 && (
           <g>
-            <text x={W / 2} y={HEADER_HEIGHT + 52} textAnchor="middle"
-              fontSize={14} fontFamily="Georgia, serif" fontStyle="italic" fill="#bbb">
+            <text x={W / 2} y={HEADER_HEIGHT + 66} textAnchor="middle"
+              fontSize={15} fontFamily="Georgia, serif" fontStyle="italic" fill="#b0aca4">
               Enter phrase lengths below to get started
             </text>
-            <text x={W / 2} y={HEADER_HEIGHT + 74} textAnchor="middle"
-              fontSize={11} fontFamily="'Monaco', 'Menlo', monospace" fill="#d0cdc7">
-              e.g.  4 4 8, 4 4 4 4
+            <text x={W / 2} y={HEADER_HEIGHT + 106} textAnchor="middle"
+              fontSize={13} fontFamily="'Monaco', 'Menlo', monospace" fill="#c8c4bd">
+              4 4 8,  4 4 4 4
             </text>
-            <text x={W / 2} y={HEADER_HEIGHT + 92} textAnchor="middle"
-              fontSize={11} fontFamily="Georgia, serif" fill="#d0cdc7">
+            <text x={W / 2} y={HEADER_HEIGHT + 134} textAnchor="middle"
+              fontSize={11.5} fontFamily="Georgia, serif" fill="#c8c4bd">
               Spaces or commas separate phrases · new line = new system row
             </text>
           </g>

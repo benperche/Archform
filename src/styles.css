@@ -80,8 +80,8 @@ body {
   transition: border-color 0.15s;
 }
 
-.title-input { font-weight: bold; font-size: 15px; width: 220px; }
-.composer-input { font-style: italic; width: 180px; color: #444; }
+.title-input { font-weight: bold; font-size: 15px; width: 320px; }
+.composer-input { font-style: italic; width: 190px; color: #444; }
 
 .title-input::placeholder,
 .composer-input::placeholder { color: #ccc; font-style: normal; font-weight: normal; }

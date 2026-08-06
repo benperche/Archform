@@ -112,7 +112,7 @@ const KEY_LANE_GAP = 8;
 
 export function computeLayout(phrases, lineBreakIndices, structuralMarkers = [], phraseOverlaps = {}, rowSpacing = {}, opts = {}) {
   if (!phrases.length) {
-    return { rows: [], totalHeight: HEADER_HEIGHT + 60, CANVAS_WIDTH, HEADER_HEIGHT, PADDING };
+    return { rows: [], totalHeight: HEADER_HEIGHT + 176, CANVAS_WIDTH, HEADER_HEIGHT, PADDING };
   }
   const keyLaneExtra = opts.hasKeyLane ? KEY_LANE_GAP + KEY_LANE_HEIGHT : 0;
 
