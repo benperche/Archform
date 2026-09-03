@@ -114,6 +114,148 @@ function rowTopPaddingForLevels(levelSet) {
   return n === 0 ? 0 : (n - 1) * 26 + 30;
 }
 
+// ── Arch geometry ─────────────────────────────────────────────
+// Exported so the collision skyline below is computed from exactly the same
+// curve DiagramCanvas draws — if these drift, clearances become fiction.
+export const MAIN_MAX_ARCH = 56;
+
+export function mainArchParams(x, width, slurY) {
+  const archHeight = Math.max(14, Math.min(width * 0.28, MAIN_MAX_ARCH));
+  const x1 = x + 1;
+  const x2 = x + width - 1;
+  const cpY = slurY - archHeight;
+  const cp1x = x1 + (x2 - x1) * 0.22;
+  const cp2x = x2 - (x2 - x1) * 0.22;
+  return { x1, x2, cpY, archHeight, cp1x, cp2x };
+}
+
+// Sub-phrase arches are shallower, but a small sub-phrase inside a wide phrase
+// can still rise above the main arch, so the skyline has to account for them.
+export function subArchHeight(width) {
+  return Math.max(12, Math.min(width * 0.18, 32));
+}
+
+// Y on a cubic bezier with control-point y values: slurY, cpY, cpY, slurY
+export function bezierY(t, slurY, cpY) {
+  const m = 1 - t;
+  return m * m * m * slurY + 3 * m * m * t * cpY + 3 * m * t * t * cpY + t * t * t * slurY;
+}
+
+function cubic(t, a, c1, c2, b) {
+  const m = 1 - t;
+  return m * m * m * a + 3 * m * m * t * c1 + 3 * m * t * t * c2 + t * t * t * b;
+}
+
+// ── Collision skyline ─────────────────────────────────────────
+// Markings above the slur line used to sit at fixed offsets, which collided
+// with the arches wherever the curve happened to be high (a theme letter at
+// the phrase start always did; a rehearsal mark mid-phrase could by ~10px).
+// Instead, track the upper contour of the row and place each marking clear of
+// whatever is already there, stacking them. The row then grows to contain the
+// result — capped, so one marking can't blow a system up to a whole page.
+const SKY_STEP = 4;          // contour resolution in px
+const SKY_GAP = 5;           // clearance left between stacked items
+const SKY_TOP_MARGIN = 4;
+const MAX_EXTRA_TOP = 56;    // most a row may grow upward
+const BASE_ABOVE_SLUR = Math.round(BASE_ROW_HEIGHT * 0.68);
+
+// Default heights, used when nothing forces an item higher, so a plain
+// diagram looks exactly as it did before.
+const MARK_H = 19, MARK_DEFAULT_CENTER = 46;
+const FERMATA_H = 14, FERMATA_ABOVE_CENTRE = 9;
+const THEME_H = 10, THEME_BASELINE_IN = 8;
+
+function makeSky(x0, x1, baseY) {
+  const n = Math.max(1, Math.ceil((x1 - x0) / SKY_STEP) + 1);
+  return { x0, n, y: new Array(n).fill(baseY) };
+}
+const skyIdx = (s, x) => Math.max(0, Math.min(s.n - 1, Math.round((x - s.x0) / SKY_STEP)));
+
+function skyMin(s, xa, xb) {
+  let m = Infinity;
+  for (let i = skyIdx(s, xa); i <= skyIdx(s, xb); i++) if (s.y[i] < m) m = s.y[i];
+  return m;
+}
+function skyReserve(s, xa, xb, y) {
+  for (let i = skyIdx(s, xa); i <= skyIdx(s, xb); i++) if (y < s.y[i]) s.y[i] = y;
+}
+function skyArch(s, x1, x2, slurY, cpY) {
+  const c1 = x1 + (x2 - x1) * 0.22, c2 = x2 - (x2 - x1) * 0.22;
+  for (let i = 0; i <= 40; i++) {
+    const t = i / 40;
+    const px = cubic(t, x1, c1, c2, x2);
+    skyReserve(s, px - SKY_STEP, px + SKY_STEP, bezierY(t, slurY, cpY));
+  }
+}
+// Reserve space for an item of the given size centred on cx; returns its top y.
+function skyPlace(s, cx, halfW, height) {
+  const top = skyMin(s, cx - halfW, cx + halfW) - SKY_GAP - height;
+  skyReserve(s, cx - halfW, cx + halfW, top);
+  return top;
+}
+
+// Place theme letters, fermatas and rehearsal marks above a row's arches.
+function placeAboveSlur({ positionedPhrases, slurY, rowEndX, barWidth, marks, fermatas, themes }) {
+  const sky = makeSky(PADDING - 24, rowEndX + 24, slurY);
+  for (const p of positionedPhrases) {
+    const a = mainArchParams(p.visualX, p.width, slurY);
+    skyArch(sky, a.x1, a.x2, slurY, a.cpY);
+    for (const sp of p.subPhrasePositions || []) {
+      skyArch(sky, sp.x, sp.x + sp.width, slurY, slurY - subArchHeight(sp.width));
+    }
+  }
+
+  const first = positionedPhrases[0];
+  const last = positionedPhrases[positionedPhrases.length - 1];
+  const rowStartBar = first.startBar;
+  const rowEndBar = last.startBar + last.length;
+  const inRow = bar => bar >= rowStartBar - 0.001 && bar <= rowEndBar + 0.001;
+  const barToX = bar => {
+    for (const p of positionedPhrases) {
+      if (bar >= p.startBar - 0.001 && bar <= p.startBar + p.length + 0.001) {
+        return p.x + (bar - p.startBar) * barWidth;
+      }
+    }
+    return null;
+  };
+
+  // 1. Theme letters sit closest to the line, at the foot of their arch.
+  const themeBaselineY = {};
+  for (const p of positionedPhrases) {
+    if (!themes[p.startBar]) continue;
+    const a = mainArchParams(p.visualX, p.width, slurY);
+    themeBaselineY[p.startBar] = skyPlace(sky, a.x1 + 8, 6, THEME_H) + THEME_BASELINE_IN;
+  }
+
+  // 2. Fermatas and breaks sit above those.
+  const fermataCenterY = {};
+  for (const fm of fermatas) {
+    if (!inRow(fm.bar)) continue;
+    const fx = barToX(fm.bar);
+    if (fx == null) continue;
+    fermataCenterY[fm.id] = skyPlace(sky, fx, 10, FERMATA_H) + FERMATA_ABOVE_CENTRE;
+  }
+
+  // 3. Rehearsal marks go highest, and share one height across the row so they
+  //    stay aligned with each other the way they would be in a printed score.
+  let markTop = slurY - MARK_DEFAULT_CENTER - MARK_H / 2;
+  const rowMarks = marks.filter(m => inRow(m.bar) && barToX(m.bar) != null);
+  for (const m of rowMarks) {
+    const w = Math.max(20, String(m.label || '').length * 8 + 10);
+    const top = skyMin(sky, barToX(m.bar) - w / 2, barToX(m.bar) + w / 2) - SKY_GAP - MARK_H;
+    if (top < markTop) markTop = top;
+  }
+  for (const m of rowMarks) {
+    const w = Math.max(20, String(m.label || '').length * 8 + 10);
+    skyReserve(sky, barToX(m.bar) - w / 2, barToX(m.bar) + w / 2, markTop);
+  }
+
+  let topmost = slurY - MAIN_MAX_ARCH;
+  for (let i = 0; i < sky.n; i++) if (sky.y[i] < topmost) topmost = sky.y[i];
+
+  return { themeBaselineY, fermataCenterY, markCenterY: markTop + MARK_H / 2, topmost };
+}
+
 // Key lane: slim band under each row showing key regions, only present
 // when the diagram has key changes.
 const KEY_LANE_HEIGHT = 16;
@@ -166,15 +308,13 @@ export function computeLayout(phrases, lineBreakIndices, structuralMarkers = [],
 
     const levelSet = rowLevelSets[rowIndex];
     const topPadding = rowTopPaddingForLevels(levelSet);
-    const rowHeight = BASE_ROW_HEIGHT + topPadding + laneExtra;
     const totalBars = row.reduce((sum, p) => sum + p.length, 0);
     const barWidth = USABLE_WIDTH / totalBars;
     const rowY = yOffset;
 
-    // slurY sits within the slur zone (below the section-marker top zone)
-    const slurY = rowY + topPadding + Math.round(BASE_ROW_HEIGHT * 0.68);
-
-    yOffset += rowHeight;
+    // Provisional slur line; may be pushed down below if markings above the
+    // line need more headroom than the base row provides.
+    const slurY0 = rowY + topPadding + BASE_ABOVE_SLUR;
 
     let x = PADDING;
     const positionedPhrases = row.map(phrase => {
@@ -212,8 +352,28 @@ export function computeLayout(phrases, lineBreakIndices, structuralMarkers = [],
       }
 
       x += width;
-      return { ...phrase, x: px, visualX, overlapPx, width, slurY, subPhrasePositions };
+      return { ...phrase, x: px, visualX, overlapPx, width, slurY: slurY0, subPhrasePositions };
     });
+
+    // Place everything that sits above the slur line against the arches, then
+    // grow the row if they needed more headroom than the base row allows.
+    const above = placeAboveSlur({
+      positionedPhrases, slurY: slurY0, rowEndX: x, barWidth,
+      marks: opts.rehearsalMarks || [],
+      fermatas: opts.fermatas || [],
+      themes: opts.phraseThemes || {},
+    });
+    const needed = slurY0 - above.topmost + SKY_TOP_MARGIN;
+    const extraTop = Math.min(MAX_EXTRA_TOP, Math.max(0, Math.round(needed - BASE_ABOVE_SLUR)));
+
+    const slurY = slurY0 + extraTop;
+    const rowHeight = BASE_ROW_HEIGHT + topPadding + laneExtra + extraTop;
+    yOffset += rowHeight;
+
+    const shifted = positionedPhrases.map(p => ({ ...p, slurY }));
+    const shift = obj => Object.fromEntries(
+      Object.entries(obj).map(([k, v]) => [k, v + extraTop])
+    );
 
     // Lanes stack below the label zone (labels render at slurY+33):
     // hairpins first, then the key lane.
@@ -222,7 +382,13 @@ export function computeLayout(phrases, lineBreakIndices, structuralMarkers = [],
     if (opts.hasHairpins) laneCursor += HAIRPIN_HEIGHT + HAIRPIN_GAP;
     const keyLaneY = opts.hasKeyLane ? laneCursor : null;
 
-    return { phrases: positionedPhrases, rowY, slurY, hairpinY, keyLaneY, rowIndex, rowEndX: x, rowHeight, levelSet, extraGap };
+    return {
+      phrases: shifted, rowY, slurY, hairpinY, keyLaneY, rowIndex,
+      rowEndX: x, rowHeight, levelSet, extraGap, extraTop,
+      themeBaselineY: shift(above.themeBaselineY),
+      fermataCenterY: shift(above.fermataCenterY),
+      markCenterY: above.markCenterY + extraTop,
+    };
   });
 
   return {

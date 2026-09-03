@@ -352,8 +352,15 @@ export default function App() {
   const hasKeyLane = state.keyChanges.length > 0;
   const hasHairpins = state.hairpins.length > 0;
   const layout = useMemo(
-    () => computeLayout(phrases, lineBreakIndices, state.structuralMarkers, state.phraseOverlaps, state.rowSpacing, { hasKeyLane, hasHairpins }),
-    [phrases, lineBreakIndices, state.structuralMarkers, state.phraseOverlaps, state.rowSpacing, hasKeyLane, hasHairpins]
+    () => computeLayout(phrases, lineBreakIndices, state.structuralMarkers, state.phraseOverlaps, state.rowSpacing, {
+      hasKeyLane, hasHairpins,
+      // Needed so the layout can reserve headroom for markings above the line
+      rehearsalMarks: state.rehearsalMarks,
+      fermatas: state.fermatas,
+      phraseThemes: state.phraseThemes,
+    }),
+    [phrases, lineBreakIndices, state.structuralMarkers, state.phraseOverlaps, state.rowSpacing,
+     hasKeyLane, hasHairpins, state.rehearsalMarks, state.fermatas, state.phraseThemes]
   );
 
   // Overlap popover position (fixed coordinates derived from SVG rect)

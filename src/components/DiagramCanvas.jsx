@@ -1,33 +1,19 @@
 import { useMemo, useState, useEffect, useCallback } from 'react';
 import { NoteGlyph, NoteText } from './NoteGlyphs';
-import { barToPosition, barToPositionEnd, formatBar, formatLength, xToNearestPhrase, CANVAS_WIDTH, PADDING } from '../utils/layout';
+import {
+  barToPosition, barToPositionEnd, formatBar, formatLength, xToNearestPhrase,
+  mainArchParams, subArchHeight, bezierY, MAIN_MAX_ARCH, CANVAS_WIDTH, PADDING,
+} from '../utils/layout';
 import { THEME_LETTERS, THEME_COLORS, THEME_FILL_OPACITY } from '../utils/themes';
 
-// Y on a cubic bezier with control-point y values: slurY, cpY, cpY, slurY
-function bezierY(t, slurY, cpY) {
-  const mt = 1 - t;
-  return mt*mt*mt*slurY + 3*mt*mt*t*cpY + 3*mt*t*t*cpY + t*t*t*slurY;
-}
-
-// Main slur arch parameters (shared between Slur and sub-phrase rendering)
-const MAIN_MAX_ARCH = 56;
 // A4 landscape with 12mm margins leaves 273 x 186mm; the viewBox is 1440 units
 // wide, so one printed page is this many units tall.
 const PRINT_PAGE_H = Math.round(CANVAS_WIDTH * 186 / 273);
-function mainArchParams(x, width, slurY) {
-  const archHeight = Math.max(14, Math.min(width * 0.28, MAIN_MAX_ARCH));
-  const x1 = x + 1;
-  const x2 = x + width - 1;
-  const cpY = slurY - archHeight;
-  const cp1x = x1 + (x2 - x1) * 0.22;
-  const cp2x = x2 - (x2 - x1) * 0.22;
-  return { x1, x2, cpY, archHeight, cp1x, cp2x };
-}
 
 // A main phrase slur with center length label, ticks, and start bar number.
 // visualX: left edge of the arch (shifted left when there is an overlap).
 // x: nominal bar position (used for bar labels and rehearsal mark placement).
-function Slur({ x, visualX, width, slurY, startBar, length, isLastInRow, endBar, overlapPx, selected, editMode, hasMarkAtBar, hideBarNum, hideStartTick, hideEndTick, themeColor, themeLetter, onClick, onStartClick }) {
+function Slur({ x, visualX, width, slurY, startBar, length, isLastInRow, endBar, overlapPx, selected, editMode, hasMarkAtBar, hideBarNum, hideStartTick, hideEndTick, themeColor, themeLetter, themeBaselineY, onClick, onStartClick }) {
   const [hovered, setHovered] = useState(false);
   const hasOverlap = overlapPx > 0;
   const { x1, x2, cpY, cp1x, cp2x } = mainArchParams(visualX, width, slurY);
@@ -74,7 +60,7 @@ function Slur({ x, visualX, width, slurY, startBar, length, isLastInRow, endBar,
       {/* Theme letter at the left foot of the arch */}
       {themeLetter && (
         <text
-          x={x1 + 8} y={slurY - 6}
+          x={x1 + 8} y={themeBaselineY ?? slurY - 6}
           fontSize={10} fontStyle="italic" fontWeight="600"
           fontFamily="Georgia, 'Times New Roman', serif"
           fill={themeColor}
@@ -168,7 +154,7 @@ function Slur({ x, visualX, width, slurY, startBar, length, isLastInRow, endBar,
 // showPlus: draw a "+" at the left junction (i.e. this is not the first sub-phrase).
 function SubSlur({ x1, y1, x2, y2, length, showPlus, onClick }) {
   const dx = x2 - x1;
-  const subArchH = Math.max(12, Math.min(dx * 0.18, 32));
+  const subArchH = subArchHeight(dx);
   const cpY_sub = Math.min(y1, y2) - subArchH;
   const cp1x = x1 + dx * 0.22;
   const cp2x = x2 - dx * 0.22;
@@ -670,6 +656,7 @@ export default function DiagramCanvas({
                   isLastInRow={isLast}
                   themeLetter={themeLetter}
                   themeColor={themeLetter ? THEME_COLORS[themeLetter] : null}
+                  themeBaselineY={row.themeBaselineY?.[phrase.startBar]}
                   selected={phrase.phraseIndex === selectedPhraseIndex}
                   editMode={editMode}
                   hasMarkAtBar={hasMarkHere}
@@ -709,7 +696,7 @@ export default function DiagramCanvas({
             <RehearsalMark
               key={mark.id}
               x={pos.x}
-              y={pos.slurY - 46}
+              y={rows[pos.rowIndex]?.markCenterY ?? pos.slurY - 46}
               label={mark.label}
               markStyle={rehearsalMarkStyle}
               onClick={inMarkMode
@@ -899,7 +886,7 @@ export default function DiagramCanvas({
               key={fm.id}
               fm={fm}
               cx={pos.x}
-              cy={pos.slurY - 36}
+              cy={rows[pos.rowIndex]?.fermataCenterY?.[fm.id] ?? pos.slurY - 36}
               isActive={fm.id === activeFermataId}
               onClick={clickable ? (e) => { e.stopPropagation(); onFermataClick(fm.id); } : undefined}
             />
