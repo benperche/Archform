@@ -10,6 +10,7 @@ import TimeSignaturePanel from './components/TimeSignaturePanel';
 import RepeatsPanel from './components/RepeatsPanel';
 import FermataPanel from './components/FermataPanel';
 import KeyPanel from './components/KeyPanel';
+import DynamicsPanel from './components/DynamicsPanel';
 import RehearsalMarksPanel from './components/RehearsalMarksPanel';
 import FileSidebar from './components/FileSidebar';
 import FormOverview from './components/FormOverview';
@@ -47,6 +48,7 @@ const defaultDiagramState = {
   title: '',
   composer: '',
   quickEntryText: '',
+  firstBar: 1,
   rehearsalMarks: [],
   rehearsalMarkStyle: 'letters',
   structuralMarkers: [],
@@ -57,6 +59,7 @@ const defaultDiagramState = {
   repeats: [],
   fermatas: [],
   keyChanges: [],
+  hairpins: [],
   rowSpacing: {},
 };
 
@@ -73,6 +76,7 @@ const defaultTransient = {
   activeFermataId: null,
   activeTimeSigId: null,
   activeKeyId: null,
+  activeHairpinId: null,
   prefillLabelBar: null,
   prefillSectionBar: null,
 };
@@ -102,7 +106,7 @@ function getDiagramSnapshot(s) {
   // eslint-disable-next-line no-unused-vars
   const { selectedPhraseIndex, selectedTextRange, editMode, activePanel, barPickField, pickedBar,
           activeLabelId, activeSectionId, activeRepeatId, activeFermataId, activeTimeSigId,
-          activeKeyId, prefillLabelBar, prefillSectionBar, ...data } = s;
+          activeKeyId, activeHairpinId, prefillLabelBar, prefillSectionBar, ...data } = s;
   return data;
 }
 
@@ -118,6 +122,7 @@ function sanitizeDiagram(data) {
     title: asStr(data.title, 500),
     composer: asStr(data.composer, 500),
     quickEntryText: asStr(data.quickEntryText),
+    firstBar: Number.isFinite(data.firstBar) ? data.firstBar : 1,
     rehearsalMarks: asArr(data.rehearsalMarks),
     rehearsalMarkStyle: ['letters', 'numbers', 'roman', 'bars'].includes(data.rehearsalMarkStyle)
       ? data.rehearsalMarkStyle : 'letters',
@@ -129,6 +134,7 @@ function sanitizeDiagram(data) {
     repeats: asArr(data.repeats),
     fermatas: asArr(data.fermatas),
     keyChanges: asArr(data.keyChanges),
+    hairpins: asArr(data.hairpins),
     rowSpacing: asObj(data.rowSpacing),
   };
 }
@@ -339,14 +345,15 @@ export default function App() {
   // expensive parse+layout+SVG-render cycles on every character.
   const deferredText = useDeferredValue(state.quickEntryText);
   const { phrases, lineBreakIndices } = useMemo(
-    () => parseQuickEntry(deferredText),
-    [deferredText]
+    () => parseQuickEntry(deferredText, state.firstBar),
+    [deferredText, state.firstBar]
   );
 
   const hasKeyLane = state.keyChanges.length > 0;
+  const hasHairpins = state.hairpins.length > 0;
   const layout = useMemo(
-    () => computeLayout(phrases, lineBreakIndices, state.structuralMarkers, state.phraseOverlaps, state.rowSpacing, { hasKeyLane }),
-    [phrases, lineBreakIndices, state.structuralMarkers, state.phraseOverlaps, state.rowSpacing, hasKeyLane]
+    () => computeLayout(phrases, lineBreakIndices, state.structuralMarkers, state.phraseOverlaps, state.rowSpacing, { hasKeyLane, hasHairpins }),
+    [phrases, lineBreakIndices, state.structuralMarkers, state.phraseOverlaps, state.rowSpacing, hasKeyLane, hasHairpins]
   );
 
   // Overlap popover position (fixed coordinates derived from SVG rect)
@@ -372,6 +379,41 @@ export default function App() {
       const next = { ...s.phraseOverlaps };
       if (!value) delete next[startBar]; else next[startBar] = value;
       return { ...s, phraseOverlaps: next };
+    });
+  }, []);
+
+  // Changing the first bar renumbers the piece. Shift every stored bar
+  // reference by the same delta so annotations stay on the same music.
+  const handleFirstBarChange = useCallback((value) => {
+    setState(s => {
+      const next = Number.isFinite(value) ? value : 1;
+      const delta = next - (s.firstBar ?? 1);
+      if (delta === 0) return { ...s, firstBar: next };
+      const shift = b => Math.round((b + delta) * 1000) / 1000;
+      const shiftKeys = obj => Object.fromEntries(
+        Object.entries(obj).map(([k, v]) => [shift(parseFloat(k)), v])
+      );
+      return {
+        ...s,
+        firstBar: next,
+        rehearsalMarks: s.rehearsalMarks.map(m => ({ ...m, bar: shift(m.bar) })),
+        structuralMarkers: s.structuralMarkers.map(m => ({
+          ...m,
+          startBar: shift(m.startBar),
+          endBar: m.endBar != null ? shift(m.endBar) : null,
+        })),
+        labels: s.labels.map(l => ({ ...l, bar: shift(l.bar) })),
+        timeSignatures: s.timeSignatures.map(t => ({ ...t, bar: shift(t.bar) })),
+        repeats: s.repeats.map(r => ({ ...r, bar: shift(r.bar) })),
+        fermatas: s.fermatas.map(f => ({ ...f, bar: shift(f.bar) })),
+        keyChanges: s.keyChanges.map(k => ({ ...k, bar: shift(k.bar) })),
+        hairpins: s.hairpins.map(h => ({
+          ...h, startBar: shift(h.startBar), endBar: shift(h.endBar),
+        })),
+        phraseOverlaps: shiftKeys(s.phraseOverlaps),
+        phraseThemes: shiftKeys(s.phraseThemes),
+        rowSpacing: shiftKeys(s.rowSpacing),
+      };
     });
   }, []);
 
@@ -431,6 +473,14 @@ export default function App() {
 
   const handleTimeSigCanvasClick = useCallback((id) => {
     setState(s => ({ ...s, activePanel: 'timeSigs', activeTimeSigId: id, barPickField: null, pickedBar: null }));
+  }, []);
+
+  const handleHairpinCanvasClick = useCallback((id) => {
+    setState(s => ({ ...s, activePanel: 'dynamics', activeHairpinId: id, barPickField: null, pickedBar: null }));
+  }, []);
+
+  const handleHairpinEditChange = useCallback((id) => {
+    setState(s => ({ ...s, activeHairpinId: id ?? null }));
   }, []);
 
   const handleKeyCanvasClick = useCallback((id) => {
@@ -774,6 +824,21 @@ export default function App() {
     setState(s => ({ ...s, keyChanges: s.keyChanges.map(k => k.id === id ? { ...k, ...updates } : k) }));
   }, [recordHistory]);
 
+  const handleAddHairpin = useCallback((h) => {
+    recordHistory();
+    setState(s => ({ ...s, hairpins: [...s.hairpins, { id: `hp${Date.now()}`, ...h }] }));
+  }, [recordHistory]);
+
+  const handleRemoveHairpin = useCallback((id) => {
+    recordHistory();
+    setState(s => ({ ...s, hairpins: s.hairpins.filter(h => h.id !== id) }));
+  }, [recordHistory]);
+
+  const handleUpdateHairpin = useCallback((id, updates) => {
+    recordHistory();
+    setState(s => ({ ...s, hairpins: s.hairpins.map(h => h.id === id ? { ...h, ...updates } : h) }));
+  }, [recordHistory]);
+
   const handleAddTimeSig = useCallback((ts) => {
     recordHistory();
     setState(s => ({ ...s, timeSignatures: [...s.timeSignatures, { id: `ts${Date.now()}`, ...ts }] }));
@@ -960,6 +1025,7 @@ export default function App() {
       <Toolbar
         state={state}
         setState={setState}
+        onFirstBarChange={handleFirstBarChange}
         sidebarOpen={sidebarOpen}
         onToggleSidebar={() => setSidebarOpen(o => { const next = !o; localStorage.setItem('pd_sidebar_open', next ? '1' : '0'); return next; })}
         onShowHelp={() => setShowHelp(true)}
@@ -1002,7 +1068,7 @@ export default function App() {
               <button className="btn zoom-btn" onClick={() => setZoom(z => Math.min(200, z + 10))} title="Zoom in">+</button>
               {zoom !== 100 && <button className="btn zoom-btn" onClick={() => setZoom(100)} title="Reset zoom">↺</button>}
             </div>
-            <div style={{ width: `${zoom}%`, minWidth: zoom < 100 ? `${zoom}%` : undefined }}>
+            <div className="zoom-wrap" style={{ width: `${zoom}%`, minWidth: zoom < 100 ? `${zoom}%` : undefined }}>
             <DiagramCanvas
               layout={layout}
               title={state.title}
@@ -1034,6 +1100,9 @@ export default function App() {
               activeTimeSigId={state.activeTimeSigId}
               keyChanges={state.keyChanges}
               activeKeyId={state.activeKeyId}
+              hairpins={state.hairpins}
+              activeHairpinId={state.activeHairpinId}
+              onHairpinClick={handleHairpinCanvasClick}
               onLabelClick={handleLabelCanvasClick}
               onSectionClick={handleSectionCanvasClick}
               onRepeatClick={handleRepeatCanvasClick}
@@ -1093,6 +1162,8 @@ export default function App() {
                 onClick={() => togglePanel('fermatas')}>Fermatas &amp; breaks</button>
               <button className={`btn bottom-btn ${state.activePanel === 'keys' ? 'btn-active' : ''}`}
                 onClick={() => togglePanel('keys')}>Keys</button>
+              <button className={`btn bottom-btn ${state.activePanel === 'dynamics' ? 'btn-active' : ''}`}
+                onClick={() => togglePanel('dynamics')}>Dynamics</button>
             </div>
           </div>
         </div>
@@ -1171,6 +1242,21 @@ export default function App() {
             layoutRows={layout.rows}
             requestEditId={state.activeFermataId}
             onEditChange={handleFermataEditChange}
+          />
+        )}
+
+        {state.activePanel === 'dynamics' && (
+          <DynamicsPanel
+            onClose={closePanel}
+            hairpins={state.hairpins}
+            onAdd={handleAddHairpin}
+            onRemove={handleRemoveHairpin}
+            onUpdate={handleUpdateHairpin}
+            onBarFieldFocus={handleBarFieldFocus}
+            pickedBar={state.pickedBar}
+            layoutRows={layout.rows}
+            requestEditId={state.activeHairpinId}
+            onEditChange={handleHairpinEditChange}
           />
         )}
 

@@ -11,6 +11,9 @@ function bezierY(t, slurY, cpY) {
 
 // Main slur arch parameters (shared between Slur and sub-phrase rendering)
 const MAIN_MAX_ARCH = 56;
+// A4 landscape with 12mm margins leaves 273 x 186mm; the viewBox is 1440 units
+// wide, so one printed page is this many units tall.
+const PRINT_PAGE_H = Math.round(CANVAS_WIDTH * 186 / 273);
 function mainArchParams(x, width, slurY) {
   const archHeight = Math.max(14, Math.min(width * 0.28, MAIN_MAX_ARCH));
   const x1 = x + 1;
@@ -482,6 +485,9 @@ export default function DiagramCanvas({
   onFermataClick,
   onTimeSigClick,
   onKeyClick,
+  hairpins = [],
+  activeHairpinId,
+  onHairpinClick,
 }) {
   const { rows, totalHeight, HEADER_HEIGHT } = layout;
   const W = CANVAS_WIDTH;
@@ -554,15 +560,8 @@ export default function DiagramCanvas({
     if (bar !== null) onBarPick(bar);
   };
 
-  return (
-    <div className={`canvas-container${barPickMode ? ' canvas-bar-pick' : ''}`}>
-      <svg
-        ref={svgRef}
-        viewBox={`0 0 ${W} ${totalHeight}`}
-        onClick={handleSvgClick}
-        style={barPickMode ? { cursor: 'crosshair' } : undefined}
-      >
-
+  const svgContent = (
+    <>
         <rect width={W} height={totalHeight} fill="white" />
 
         {/* Title — centred */}
@@ -735,6 +734,62 @@ export default function DiagramCanvas({
             />
           );
         })}
+
+        {/* Hairpins — crescendo / diminuendo wedges beneath each row */}
+        {hairpins.length > 0 && (() => {
+          const clickable = !barPickMode && !editMode && !!onHairpinClick;
+          const H = 12;
+          return rows.map(row => {
+            if (row.hairpinY == null) return null;
+            const rowStartBar = row.phrases[0].startBar;
+            const lastPhrase = row.phrases[row.phrases.length - 1];
+            const rowEndBar = lastPhrase.startBar + lastPhrase.length;
+
+            return hairpins.map(hp => {
+              const from = Math.min(hp.startBar, hp.endBar);
+              const to = Math.max(hp.startBar, hp.endBar);
+              // Skip hairpins that don't touch this row at all
+              if (to <= rowStartBar || from >= rowEndBar) return null;
+
+              // Clip to the row; note where it was cut so the open end stays open
+              const clipStart = Math.max(from, rowStartBar);
+              const clipEnd = Math.min(to, rowEndBar);
+              const startPos = clipStart <= rowStartBar
+                ? { x: PADDING } : barToPosition(clipStart, rows);
+              const x1 = startPos ? startPos.x : PADDING;
+              const x2 = clipEnd >= rowEndBar
+                ? row.rowEndX : (barToPosition(clipEnd, rows)?.x ?? row.rowEndX);
+              if (x2 - x1 < 2) return null;
+
+              const isActive = hp.id === activeHairpinId;
+              const stroke = isActive ? '#2563eb' : '#6b6558';
+              const y = row.hairpinY + H / 2;
+              // A crescendo opens to the right, a diminuendo closes.
+              const openRight = hp.type !== 'dim';
+              // Fractions of full aperture at each end (0 = point, 1 = full)
+              const startOpen = openRight ? (from < rowStartBar ? 0.45 : 0) : 1;
+              const endOpen = openRight ? 1 : (to > rowEndBar ? 0.45 : 0);
+              const half = H / 2;
+              const y1a = y - half * startOpen, y1b = y + half * startOpen;
+              const y2a = y - half * endOpen,   y2b = y + half * endOpen;
+
+              return (
+                <g key={`${row.rowIndex}-${hp.id}`}>
+                  <rect
+                    x={x1} y={row.hairpinY - 2} width={x2 - x1} height={H + 4}
+                    fill="transparent"
+                    style={clickable ? { cursor: 'pointer' } : undefined}
+                    onClick={clickable ? (e) => { e.stopPropagation(); onHairpinClick(hp.id); } : undefined}
+                  />
+                  <line x1={x1} y1={y1a} x2={x2} y2={y2a}
+                    stroke={stroke} strokeWidth={1.1} strokeLinecap="round" pointerEvents="none" />
+                  <line x1={x1} y1={y1b} x2={x2} y2={y2b}
+                    stroke={stroke} strokeWidth={1.1} strokeLinecap="round" pointerEvents="none" />
+                </g>
+              );
+            });
+          });
+        })()}
 
         {/* Key lane — tonal region bands beneath each row */}
         {keyChanges.length > 0 && (() => {
@@ -972,7 +1027,42 @@ export default function DiagramCanvas({
             </text>
           </g>
         )}
-      </svg>
-    </div>
+    </>
+  );
+
+  // Print pagination: slice the same content into page-height windows using
+  // viewBox, breaking only between systems so a row is never cut in half.
+  const pages = [];
+  let pageStart = 0;
+  for (const row of rows) {
+    if (row.rowY + row.rowHeight - pageStart > PRINT_PAGE_H && row.rowY > pageStart) {
+      pages.push({ y: pageStart, h: row.rowY - pageStart });
+      pageStart = row.rowY;
+    }
+  }
+  pages.push({ y: pageStart, h: Math.max(totalHeight - pageStart, 1) });
+
+  return (
+    <>
+      <div className={`canvas-container${barPickMode ? ' canvas-bar-pick' : ''}`}>
+        <svg
+          ref={svgRef}
+          viewBox={`0 0 ${W} ${totalHeight}`}
+          onClick={handleSvgClick}
+          style={barPickMode ? { cursor: 'crosshair' } : undefined}
+        >
+          {svgContent}
+        </svg>
+      </div>
+
+      {/* Print-only: one SVG per page, same content, cropped by viewBox */}
+      <div className="print-pages" aria-hidden="true">
+        {pages.map((pg, i) => (
+          <div className="print-page" key={i}>
+            <svg viewBox={`0 ${pg.y} ${W} ${pg.h}`}>{svgContent}</svg>
+          </div>
+        ))}
+      </div>
+    </>
   );
 }

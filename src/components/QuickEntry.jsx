@@ -1,4 +1,5 @@
 import { useRef, useEffect } from 'react';
+import { formatBar } from '../utils/layout';
 
 export default function QuickEntry({ text, onChange, phrases, textSelection }) {
   const textareaRef = useRef(null);
@@ -14,6 +15,9 @@ export default function QuickEntry({ text, onChange, phrases, textSelection }) {
     textareaRef.current.setSelectionRange(textSelection.start, textSelection.end);
   }, [textSelection]);
 
+  // Sub-phrase groups whose parts don't add up to the parent, e.g. 8(4+3)
+  const mismatches = phrases.filter(p => p.subMismatch != null);
+
   return (
     <div className="quick-entry">
       <div className="quick-entry-header">
@@ -27,6 +31,19 @@ export default function QuickEntry({ text, onChange, phrases, textSelection }) {
           </span>
         )}
       </div>
+      {mismatches.length > 0 && (
+        <p className="quick-entry-warning">
+          ⚠ Sub-phrases don't add up —{' '}
+          {mismatches.map((p, i) => (
+            <span key={p.id}>
+              {i > 0 && '; '}
+              bar {formatBar(p.startBar)}: {p.subPhrases.join('+')} = {formatBar(p.subTotal)},
+              not {formatBar(p.length)}
+            </span>
+          ))}
+          . They are drawn at their true length, so the gap is visible on the diagram.
+        </p>
+      )}
       <textarea
         ref={textareaRef}
         className="quick-entry-textarea"

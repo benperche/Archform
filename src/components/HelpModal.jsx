@@ -40,6 +40,11 @@ export default function HelpModal({ onClose }) {
               Bar positions throughout the app accept halves — e.g. <code>12.5</code> places a
               marking mid-way through bar 12.
             </p>
+            <p>
+              The <strong>Bar 1 =</strong> field in the toolbar sets the number the piece starts
+              on. Use <code>0</code> for a pickup bar, or any number when diagramming an excerpt
+              that begins mid-piece. Existing markings shift with it, so they stay on the same music.
+            </p>
             <p>The title and composer fields at the top are shown on the printed diagram.</p>
           </section>
 
@@ -94,27 +99,54 @@ export default function HelpModal({ onClose }) {
               to jump to its edit form.
             </p>
             <p>
-              You can include note symbols in label text using shorthand codes:
+              You can include note and rest symbols in label text using shorthand codes.
+              A rest is the note code plus <code>r</code>:
             </p>
-            <div className="help-note-table">
-              <div className="help-note-row"><NoteGlyphPreview type="w" /><code>w</code><span>whole note (semibreve)</span></div>
-              <div className="help-note-row"><NoteGlyphPreview type="h" /><code>h</code><span>half note (minim)</span></div>
-              <div className="help-note-row"><NoteGlyphPreview type="q" /><code>q</code><span>quarter note (crotchet)</span></div>
-              <div className="help-note-row"><NoteGlyphPreview type="e" /><code>e</code><span>eighth note (quaver)</span></div>
-              <div className="help-note-row"><NoteGlyphPreview type="s" /><code>s</code><span>sixteenth note (semiquaver)</span></div>
-              <div className="help-note-row"><NoteGlyphPreview type="ee" /><code>ee</code><span>two beamed eighths</span></div>
-              <div className="help-note-row"><NoteGlyphPreview type="ss" /><code>ss / sss / ssss</code><span>two / three / four beamed sixteenths</span></div>
+            <div className="help-glyph-table">
+              <div className="help-glyph-head">
+                <span>Note</span><span>Value</span><span>Rest</span>
+              </div>
+              {[
+                ['w', 'wr', 'whole (semibreve)'],
+                ['h', 'hr', 'half (minim)'],
+                ['q', 'qr', 'quarter (crotchet)'],
+                ['e', 'er', 'eighth (quaver)'],
+                ['s', 'sr', 'sixteenth (semiquaver)'],
+              ].map(([note, rest, name]) => (
+                <div className="help-glyph-row" key={note}>
+                  <span className="help-glyph-cell">
+                    <NoteGlyphPreview type={note} /><code>{note}</code>
+                  </span>
+                  <span className="help-glyph-name">{name}</span>
+                  <span className="help-glyph-cell">
+                    <NoteGlyphPreview type={rest} /><code>{rest}</code>
+                  </span>
+                </div>
+              ))}
             </div>
             <p>
-              Triplet groups show three notes with a <em>3</em> bracket below:
+              Beamed groups and triplets (triplets carry a <em>3</em> bracket below):
             </p>
             <div className="help-note-table">
+              <div className="help-note-row"><NoteGlyphPreview type="ee" /><code>ee</code><span>two beamed eighths</span></div>
+              <div className="help-note-row"><NoteGlyphPreview type="ss" /><code>ss / sss / ssss</code><span>two / three / four beamed sixteenths</span></div>
               <div className="help-note-row"><NoteGlyphPreview type="th" /><code>th</code><span>triplet halves</span></div>
               <div className="help-note-row"><NoteGlyphPreview type="tq" /><code>tq</code><span>triplet quarters</span></div>
               <div className="help-note-row"><NoteGlyphPreview type="te" /><code>te</code><span>triplet eighths</span></div>
               <div className="help-note-row"><NoteGlyphPreview type="ts" /><code>ts</code><span>triplet sixteenths</span></div>
             </div>
-            <p>Example: <code>te te q 1st Theme</code></p>
+            <p>
+              Add a full stop for a <strong>dotted</strong> value — <code>q.</code>, <code>e.</code>,
+              even <code>qr.</code> for a dotted rest.
+            </p>
+            <p>
+              <strong>Text dynamics</strong> in a label are set in the bold italic style
+              automatically: <code>p</code> <code>pp</code> <code>mp</code> <code>mf</code>{' '}
+              <code>f</code> <code>ff</code> <code>fff</code> <code>sf</code> <code>sfz</code>{' '}
+              <code>fp</code>. Capitalised letters are left alone, so key names like
+              “F minor” are safe.
+            </p>
+            <p>Example: <code>te te q. 1st Theme</code> · <code>pp dolce</code></p>
           </section>
 
           <section className="help-section">
@@ -167,7 +199,22 @@ export default function HelpModal({ onClose }) {
           </section>
 
           <section className="help-section">
-            <h3>8 — Navigation &amp; zoom</h3>
+            <h3>8 — Keys &amp; dynamics</h3>
+            <p>
+              Click <strong>Keys</strong> to add a key change at a bar. Each one shows as a band
+              beneath the systems running until the next change, repeating in brackets on any
+              system it carries across.
+            </p>
+            <p>
+              Click <strong>Dynamics</strong> to add a <em>crescendo</em> or <em>diminuendo</em>{' '}
+              hairpin spanning a range of bars. Hairpins that cross a system break stay open at
+              the join. For text markings like <code>f</code> or <code>pp</code>, add a Label
+              instead — see step 4.
+            </p>
+          </section>
+
+          <section className="help-section">
+            <h3>9 — Navigation &amp; zoom</h3>
             <p>
               Use the <strong>+</strong> / <strong>−</strong> buttons above the diagram to zoom in and out,
               or hold <strong>⌘ Cmd</strong> (Mac) / <strong>Ctrl</strong> (Windows) and scroll with
@@ -184,7 +231,7 @@ export default function HelpModal({ onClose }) {
           </section>
 
           <section className="help-section">
-            <h3>9 — Managing files</h3>
+            <h3>10 — Managing files</h3>
             <p>
               Use the <strong>Files</strong> button (top left) to create new diagrams, switch between them,
               duplicate or delete ones you no longer need. File names are set automatically from the
@@ -193,7 +240,8 @@ export default function HelpModal({ onClose }) {
             <p>
               Use <strong>Export</strong> to save a diagram as a JSON file and <strong>Import</strong> to
               reload it later. SVG and PNG exports are also available. Use <strong>Print / PDF</strong> to
-              print or export to PDF — the toolbar and panels are hidden automatically.
+              print or export to PDF — the toolbar and panels are hidden automatically, and long
+              diagrams are split across pages so a system is never cut in half.
             </p>
           </section>
 

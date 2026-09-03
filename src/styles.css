@@ -90,6 +90,30 @@ body {
 .composer-input:hover, .composer-input:focus { border-bottom-color: #bbb; }
 .title-input:focus, .composer-input:focus { border-bottom-color: #666; }
 
+.first-bar-field {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--subtle);
+  white-space: nowrap;
+}
+
+.first-bar-input {
+  width: 46px;
+  border: none;
+  border-bottom: 1px solid transparent;
+  background: transparent;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 13px;
+  color: var(--text);
+  outline: none;
+  padding: 2px 0;
+  transition: border-color 0.15s;
+}
+.first-bar-input:hover, .first-bar-input:focus { border-bottom-color: #bbb; }
+.first-bar-input:focus { border-bottom-color: #666; }
+
 .toolbar-actions {
   display: flex;
   align-items: center;
@@ -440,6 +464,13 @@ body {
 }
 
 .quick-entry-hint { font-size: 11px; color: #aaa; }
+.quick-entry-warning {
+  margin-top: 6px;
+  font-size: 11.5px;
+  color: #b45309;
+  line-height: 1.45;
+}
+
 .quick-entry-stats { font-size: 11px; color: #aaa; margin-left: auto; }
 
 .quick-entry-textarea {
@@ -842,6 +873,58 @@ body {
   padding: 6px 10px;
   margin: 4px 0 8px;
   color: var(--text);
+}
+
+/* Paired note/rest reference table */
+.help-glyph-table {
+  display: grid;
+  grid-template-columns: minmax(78px, auto) 1fr minmax(78px, auto);
+  align-items: center;
+  gap: 2px 14px;
+  margin: 8px 0 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #fbfaf8;
+}
+
+.help-glyph-head {
+  display: contents;
+}
+.help-glyph-head > span {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: #999;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--border);
+}
+.help-glyph-head > span:nth-child(2) { text-align: left; }
+
+.help-glyph-row {
+  display: contents;
+}
+
+.help-glyph-cell {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 26px;
+}
+
+.help-glyph-cell code {
+  font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+  font-size: 11px;
+  background: #f0ede8;
+  padding: 1px 5px;
+  border-radius: 3px;
+  color: var(--text);
+}
+
+.help-glyph-name {
+  font-size: 12.5px;
+  color: #555;
 }
 
 .help-note-table {
@@ -1499,7 +1582,18 @@ svg g[style*="ns-resize"]:hover text {
 
 /* ── Print ───────────────────────────────────────────────────── */
 
+/* Per-page SVG slices, built by DiagramCanvas; only used when printing */
+.print-pages { display: none; }
+
 @media print {
+  /* Print the paginated slices, not the single tall canvas */
+  .canvas-container { display: none !important; }
+  .print-pages { display: block !important; }
+  .print-page { break-after: page; page-break-after: always; }
+  .print-page:last-child { break-after: auto; page-break-after: auto; }
+  .print-page svg { display: block; width: 100%; height: auto; }
+  /* UI-only affordances (row-spacing grips) never belong on paper */
+  [data-no-export] { display: none !important; }
   .toolbar, .quick-entry, .side-panel, .file-sidebar,
   .bottom-panel-buttons, .zoom-controls, .toast, .form-overview { display: none !important; }
   body { background: white; }
@@ -1507,7 +1601,8 @@ svg g[style*="ns-resize"]:hover text {
   .content-area { overflow: visible; }
   .bottom-area { border-top: none; }
   .diagram-area { padding: 0; overflow: visible; }
-  .canvas-container { box-shadow: none; border-radius: 0; }
+  /* Screen zoom must not scale the printed page */
+  .zoom-wrap { width: 100% !important; min-width: 0 !important; }
 
   @page { size: A4 landscape; margin: 12mm; }
 }

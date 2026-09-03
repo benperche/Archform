@@ -34,6 +34,7 @@ function ExportMenu({ onExportJSON, onExportSVG, onExportPNG }) {
 export default function Toolbar({
   state,
   setState,
+  onFirstBarChange,
   sidebarOpen,
   onToggleSidebar,
   onShowHelp,
@@ -82,6 +83,19 @@ export default function Toolbar({
           onChange={e => setState(s => ({ ...s, composer: e.target.value }))}
           placeholder="Composer"
         />
+        <label className="first-bar-field" title="Bar number the piece starts on — use 0 for a pickup bar, or any number for an excerpt">
+          <span>Bar 1 =</span>
+          <input
+            className="first-bar-input"
+            type="number"
+            step="1"
+            value={state.firstBar ?? 1}
+            onChange={e => {
+              const v = parseFloat(e.target.value);
+              onFirstBarChange?.(Number.isFinite(v) ? v : 1);
+            }}
+          />
+        </label>
       </div>
 
       <div className="toolbar-actions">

@@ -58,13 +58,15 @@ function tokenizeLine(line) {
 // Parse the quick-entry textarea into phrases + line-break set.
 // Each line → one row; numbers separated by spaces/commas.
 // Subphrase syntax: 6(4+2) creates an outer phrase of 6 with two inner phrases.
-export function parseQuickEntry(text) {
+export function parseQuickEntry(text, firstBar = 1) {
   if (!text.trim()) return { phrases: [], lineBreakIndices: new Set() };
 
   const lines = text.split('\n');
   const phrases = [];
   const lineBreakIndices = new Set();
-  let barCounter = 1;
+  // Bar numbering starts here — set to 0 for a pickup/anacrusis, or to any
+  // number when diagramming an excerpt that begins mid-piece.
+  let barCounter = Number.isFinite(firstBar) ? firstBar : 1;
 
   let lineOffset = 0;
   for (const line of lines) {
@@ -80,11 +82,18 @@ export function parseQuickEntry(text) {
         const idx = phrases.length;
         if (idx > 0 && ti === 0) lineBreakIndices.add(idx);
 
+        const subTotal = parsed.subPhrases.reduce((a, b) => a + b, 0);
+        const subMismatch = parsed.subPhrases.length > 0 && Math.abs(subTotal - parsed.length) > 0.001
+          ? Math.round((subTotal - parsed.length) * 1000) / 1000
+          : null;
+
         phrases.push({
           id: `p${idx}`,
           startBar: barCounter,
           length: parsed.length,
           subPhrases: parsed.subPhrases,
+          subTotal,
+          subMismatch,
           subTextRanges: parsed.subTextRanges,
           textStart: lineOffset + start,
           textEnd: lineOffset + end,
@@ -109,12 +118,17 @@ function rowTopPaddingForLevels(levelSet) {
 // when the diagram has key changes.
 const KEY_LANE_HEIGHT = 16;
 const KEY_LANE_GAP = 8;
+// Hairpin (crescendo/diminuendo) lane, stacked above the key lane
+const HAIRPIN_HEIGHT = 12;
+const HAIRPIN_GAP = 8;
 
 export function computeLayout(phrases, lineBreakIndices, structuralMarkers = [], phraseOverlaps = {}, rowSpacing = {}, opts = {}) {
   if (!phrases.length) {
     return { rows: [], totalHeight: HEADER_HEIGHT + 176, CANVAS_WIDTH, HEADER_HEIGHT, PADDING };
   }
+  const hairpinExtra = opts.hasHairpins ? HAIRPIN_GAP + HAIRPIN_HEIGHT : 0;
   const keyLaneExtra = opts.hasKeyLane ? KEY_LANE_GAP + KEY_LANE_HEIGHT : 0;
+  const laneExtra = hairpinExtra + keyLaneExtra;
 
   // Group phrases into rows
   const rows = [];
@@ -152,7 +166,7 @@ export function computeLayout(phrases, lineBreakIndices, structuralMarkers = [],
 
     const levelSet = rowLevelSets[rowIndex];
     const topPadding = rowTopPaddingForLevels(levelSet);
-    const rowHeight = BASE_ROW_HEIGHT + topPadding + keyLaneExtra;
+    const rowHeight = BASE_ROW_HEIGHT + topPadding + laneExtra;
     const totalBars = row.reduce((sum, p) => sum + p.length, 0);
     const barWidth = USABLE_WIDTH / totalBars;
     const rowY = yOffset;
@@ -175,12 +189,14 @@ export function computeLayout(phrases, lineBreakIndices, structuralMarkers = [],
       // Sub-phrase positions are relative to visualX so they draw correctly.
       const subPhrasePositions = [];
       if (phrase.subPhrases && phrase.subPhrases.length > 0) {
-        const totalSubBars = phrase.subPhrases.reduce((s, l) => s + l, 0);
         let subX = visualX;
         let subBar = phrase.startBar;
         for (let si = 0; si < phrase.subPhrases.length; si++) {
           const subLen = phrase.subPhrases[si];
-          const subWidth = (subLen / totalSubBars) * width;
+          // True scale: a sub-phrase of n bars is n * barWidth wide. Previously
+          // these were normalised to fill the parent, which silently hid
+          // mismatches like 8(4+3) by stretching them to look correct.
+          const subWidth = subLen * barWidth;
           const range = phrase.subTextRanges?.[si];
           subPhrasePositions.push({
             x: subX,
@@ -199,10 +215,14 @@ export function computeLayout(phrases, lineBreakIndices, structuralMarkers = [],
       return { ...phrase, x: px, visualX, overlapPx, width, slurY, subPhrasePositions };
     });
 
-    // Key lane band sits below the label zone (labels render at slurY+33)
-    const keyLaneY = opts.hasKeyLane ? slurY + 41 : null;
+    // Lanes stack below the label zone (labels render at slurY+33):
+    // hairpins first, then the key lane.
+    let laneCursor = slurY + 41;
+    const hairpinY = opts.hasHairpins ? laneCursor : null;
+    if (opts.hasHairpins) laneCursor += HAIRPIN_HEIGHT + HAIRPIN_GAP;
+    const keyLaneY = opts.hasKeyLane ? laneCursor : null;
 
-    return { phrases: positionedPhrases, rowY, slurY, keyLaneY, rowIndex, rowEndX: x, rowHeight, levelSet, extraGap };
+    return { phrases: positionedPhrases, rowY, slurY, hairpinY, keyLaneY, rowIndex, rowEndX: x, rowHeight, levelSet, extraGap };
   });
 
   return {
