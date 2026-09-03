@@ -25,8 +25,8 @@ const REST_W = RST_LINE_X2 + 1.5;
 export const NOTE_GW = {
   w: OX * 2 + 2, h: STX + 2, q: STX + 2,
   e: STX + FL_DX + 1, s: STX + FL_DX + 1,
-  ee: SP + STX - 3, ss: SP + STX - 3,
-  sss: SP * 2 + STX - 3, ssss: SP * 3 + STX - 3,
+  ee: SP + STX + 2, ss: SP + STX + 2,
+  sss: SP * 2 + STX + 2, ssss: SP * 3 + STX + 2,
   th: TRIP_W, tq: TRIP_W, te: TRIP_W, ts: TRIP_W,
   wr: REST_W, hr: REST_W, qr: 8, er: 8, sr: 8.5,
 };
@@ -112,10 +112,10 @@ export function NoteGlyph({ type, fill: f = '#1a1a1a', dotted = false }) {
 
   // Quarter rest: zigzag with a curled tail
   const qRest = () => (
-    <path
+    <g transform="translate(-1.8, 0)"><path
       d="M 2.1 -12 L 5.4 -8.8 L 2.3 -6.4 L 5.6 -3.7 C 3.8 -4.7 2.1 -3.8 2.8 -1.7"
       fill="none" stroke={f} strokeWidth={1.5}
-      strokeLinecap="round" strokeLinejoin="round" />
+      strokeLinecap="round" strokeLinejoin="round" /></g>
   );
 
   // Eighth / sixteenth rest: slanted stem with n blobs sitting on it
@@ -134,7 +134,7 @@ export function NoteGlyph({ type, fill: f = '#1a1a1a', dotted = false }) {
       );
     }
     return (
-      <g>
+      <g transform="translate(-1.8, 0)">
         <line x1={x1} y1={y1} x2={x2} y2={y2} stroke={f} strokeWidth={1.1} strokeLinecap="round" />
         {blobs}
       </g>
@@ -145,7 +145,7 @@ export function NoteGlyph({ type, fill: f = '#1a1a1a', dotted = false }) {
   const dot = () => {
     if (!dotted) return null;
     const isRest = REST_TYPES.has(type);
-    const cx = isRest ? (type === 'wr' || type === 'hr' ? 10.4 : 8.2) : OX + NH_RX + 2.6;
+    const cx = isRest ? (type === 'wr' || type === 'hr' ? 10.4 : 5.8) : OX + NH_RX + 2.6;
     const cy = isRest ? -6.3 : OY;
     return <circle cx={cx} cy={cy} r={1.15} fill={f} />;
   };
@@ -182,15 +182,25 @@ export function NoteGlyph({ type, fill: f = '#1a1a1a', dotted = false }) {
 
 function estTextW(str, fontSize) { return str.length * fontSize * 0.52; }
 
+// Advance per space when it sits between two glyphs, as a fraction of the font
+// size. A full word space (0.52) leaves a bigger gap than a notehead is wide.
+const TIGHT_SPACE = 0.18;
+
 export function NoteText({ text, x, y, fontSize, fill, fontStyle, fontWeight, textAnchor = 'start' }) {
   if (!text) return null;
   const tokens = parseNoteText(text);
   const sc = fontSize / 11;
-  const widths = tokens.map(tok =>
-    tok.kind === 'text' ? estTextW(tok.val, fontSize)
-    : tok.kind === 'dyn' ? estTextW(tok.val, fontSize) * 1.15 + 2
-    : (NOTE_GW[tok.val] ?? 0) * sc + (tok.dotted ? 4 * sc : 0)
-  );
+  const widths = tokens.map((tok, i) => {
+    if (tok.kind === 'text') {
+      const betweenGlyphs = /^ +$/.test(tok.val)
+        && tokens[i - 1]?.kind === 'note' && tokens[i + 1]?.kind === 'note';
+      return betweenGlyphs
+        ? tok.val.length * fontSize * TIGHT_SPACE
+        : estTextW(tok.val, fontSize);
+    }
+    if (tok.kind === 'dyn') return estTextW(tok.val, fontSize) * 1.15 + 2;
+    return (NOTE_GW[tok.val] ?? 0) * sc + (tok.dotted ? 4 * sc : 0);
+  });
   const totalW = widths.reduce((a, b) => a + b, 0);
   let startX = textAnchor === 'middle' ? x - totalW / 2
              : textAnchor === 'end'   ? x - totalW : x;
