@@ -126,11 +126,19 @@ export function NoteGlyph({ type, fill: f = '#1a1a1a', dotted = false }) {
     const nx = -dy / len, ny = dx / len;   // left-hand normal to the stem
     const lerp = (a, b, t) => a + (b - a) * t;
     const blobs = [];
+    // How far left of the stem the bulb sits. Capped by the radius (1.5) —
+    // any further and the bulb floats free of the stroke.
+    const OFFSET = 1.42;
+    // Position along the stem. Sitting at the very top read as a lollipop once
+    // the connecting hook was removed, so the bulbs slide down; the sixteenth's
+    // pair sits a little higher so the two stay centred on the stroke.
+    const t0 = n > 1 ? 0.30 : 0.36;
+    const step = n > 1 ? 0.29 : 0.31;
     for (let i = 0; i < n; i++) {
-      const t = 0.07 + i * 0.31;
+      const t = t0 + i * step;
       const ax = lerp(x1, x2, t), ay = lerp(y1, y2, t);
       blobs.push(
-        <circle key={i} cx={ax + nx * 1.15} cy={ay + ny * 1.15} r={1.5} fill={f} />
+        <circle key={i} cx={ax + nx * OFFSET} cy={ay + ny * OFFSET} r={1.5} fill={f} />
       );
     }
     return (
@@ -180,7 +188,36 @@ export function NoteGlyph({ type, fill: f = '#1a1a1a', dotted = false }) {
   return withDot(glyph);
 }
 
-function estTextW(str, fontSize) { return str.length * fontSize * 0.52; }
+const FONT_FAMILY = "Georgia, 'Times New Roman', serif";
+
+// Text advance was estimated as characters x 0.52em, which over-counts serif
+// italic and left a visible gap after a word. Measure it properly on a canvas
+// using the same font; results are cached since labels repeat every render.
+let _measureCtx;
+const _textWCache = new Map();
+
+function estTextW(str, fontSize, fontStyle, fontWeight) {
+  if (!str) return 0;
+  if (_measureCtx === undefined) {
+    _measureCtx = typeof document !== 'undefined'
+      ? document.createElement('canvas').getContext('2d')
+      : null;
+  }
+  // No canvas (e.g. server render): fall back to the old approximation
+  if (!_measureCtx) return str.length * fontSize * 0.52;
+
+  const font = `${fontStyle || ''} ${fontWeight || ''} ${fontSize}px ${FONT_FAMILY}`
+    .replace(/\s+/g, ' ').trim();
+  const key = `${font}\u0000${str}`;
+  let w = _textWCache.get(key);
+  if (w === undefined) {
+    _measureCtx.font = font;
+    w = _measureCtx.measureText(str).width;
+    if (_textWCache.size > 4000) _textWCache.clear();
+    _textWCache.set(key, w);
+  }
+  return w;
+}
 
 // Advance per space when it sits between two glyphs, as a fraction of the font
 // size. A full word space (0.52) leaves a bigger gap than a notehead is wide.
@@ -196,9 +233,9 @@ export function NoteText({ text, x, y, fontSize, fill, fontStyle, fontWeight, te
         && tokens[i - 1]?.kind === 'note' && tokens[i + 1]?.kind === 'note';
       return betweenGlyphs
         ? tok.val.length * fontSize * TIGHT_SPACE
-        : estTextW(tok.val, fontSize);
+        : estTextW(tok.val, fontSize, fontStyle, fontWeight);
     }
-    if (tok.kind === 'dyn') return estTextW(tok.val, fontSize) * 1.15 + 2;
+    if (tok.kind === 'dyn') return estTextW(tok.val, fontSize * 1.18, 'italic', 'bold') + 2;
     return (NOTE_GW[tok.val] ?? 0) * sc + (tok.dotted ? 4 * sc : 0);
   });
   const totalW = widths.reduce((a, b) => a + b, 0);
