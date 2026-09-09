@@ -146,6 +146,19 @@ function cubic(t, a, c1, c2, b) {
   return m * m * m * a + 3 * m * m * t * c1 + 3 * m * t * t * c2 + t * t * t * b;
 }
 
+// Height of an arch at a given x, by solving the bezier's x for t. Used to
+// keep sub-phrase labels clear of the main arch above them.
+export function archYAtX(arch, x, slurY) {
+  const { x1, x2, cpY, cp1x, cp2x } = arch;
+  if (x <= x1 || x >= x2) return slurY;
+  let lo = 0, hi = 1;
+  for (let i = 0; i < 30; i++) {
+    const mid = (lo + hi) / 2;
+    if (cubic(mid, x1, cp1x, cp2x, x2) < x) lo = mid; else hi = mid;
+  }
+  return bezierY((lo + hi) / 2, slurY, cpY);
+}
+
 // ── Collision skyline ─────────────────────────────────────────
 // Markings above the slur line used to sit at fixed offsets, which collided
 // with the arches wherever the curve happened to be high (a theme letter at

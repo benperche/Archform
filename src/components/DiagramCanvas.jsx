@@ -2,13 +2,20 @@ import { useMemo, useState, useEffect, useCallback } from 'react';
 import { NoteGlyph, NoteText } from './NoteGlyphs';
 import {
   barToPosition, barToPositionEnd, formatBar, formatLength, xToNearestPhrase,
-  mainArchParams, subArchHeight, bezierY, MAIN_MAX_ARCH, CANVAS_WIDTH, PADDING,
+  mainArchParams, subArchHeight, archYAtX, bezierY, MAIN_MAX_ARCH, CANVAS_WIDTH, PADDING,
 } from '../utils/layout';
 import { THEME_LETTERS, THEME_COLORS, THEME_FILL_OPACITY } from '../utils/themes';
 
 // A4 landscape with 12mm margins leaves 273 x 186mm; the viewBox is 1440 units
 // wide, so one printed page is this many units tall.
 const PRINT_PAGE_H = Math.round(CANVAS_WIDTH * 186 / 273);
+
+// Sub-phrase length numbers: how far below the slur line they may sit, and the
+// clearance they keep from the main arch overhead.
+const SUB_LABEL_DROP = 4;
+const SUB_LABEL_FLOOR = 6;
+const SUB_LABEL_GAP = 3;
+const SUB_LABEL_CAP = 9.4;   // cap height of the 13px numerals
 
 // A main phrase slur with center length label, ticks, and start bar number.
 // visualX: left edge of the arch (shifted left when there is an overlap).
@@ -152,7 +159,7 @@ function Slur({ x, visualX, width, slurY, startBar, length, isLastInRow, endBar,
 
 // A sub-phrase slur: endpoints land on the shared baseline, dashed stroke.
 // showPlus: draw a "+" at the left junction (i.e. this is not the first sub-phrase).
-function SubSlur({ x1, y1, x2, y2, length, showPlus, onClick }) {
+function SubSlur({ x1, y1, x2, y2, length, showPlus, mainArchY, onClick }) {
   const dx = x2 - x1;
   const subArchH = subArchHeight(dx);
   const cpY_sub = Math.min(y1, y2) - subArchH;
@@ -161,9 +168,19 @@ function SubSlur({ x1, y1, x2, y2, length, showPlus, onClick }) {
   const d = `M ${x1} ${y1} C ${cp1x} ${cpY_sub} ${cp2x} ${cpY_sub} ${x2} ${y2}`;
 
   const midX = (x1 + x2) / 2;
-  // Place label inside the arch, ~15px below the peak (matching main slur clearance)
-  const peakY = 0.25 * Math.max(y1, y2) + 0.75 * cpY_sub;
-  const labelY = Math.min(peakY + 22, Math.max(y1, y2) - 2);
+  // Inside the arch when it is deep enough, otherwise just under the slur line.
+  // A shallow sub-arch (anything under ~178px wide) has no room for the number,
+  // and the old floor of slurY-2 left it sitting on the main arch wherever that
+  // arch was still low — which is exactly where short sub-phrases tend to be.
+  const baseline = Math.max(y1, y2);
+  const peakY = 0.25 * baseline + 0.75 * cpY_sub;
+  let labelY = Math.min(peakY + 22, baseline + SUB_LABEL_DROP);
+  if (mainArchY != null) {
+    // Never let the number's top touch the main arch overhead; the floor keeps
+    // it clear of the bar numbers below (their caps start ~10px under the line).
+    labelY = Math.min(baseline + SUB_LABEL_FLOOR,
+                      Math.max(labelY, mainArchY + SUB_LABEL_GAP + SUB_LABEL_CAP));
+  }
 
   return (
     <g>
@@ -674,6 +691,9 @@ export default function DiagramCanvas({
                     x2={sp.x + sp.width} y2={phrase.slurY}
                     length={sp.length}
                     showPlus={si > 0}
+                    mainArchY={archYAtX(
+                      mainArchParams(phrase.visualX, phrase.width, phrase.slurY),
+                      sp.x + sp.width / 2, phrase.slurY)}
                     onClick={() => onSubPhraseClick(
                       phrase.phraseIndex,
                       sp.textStart,
