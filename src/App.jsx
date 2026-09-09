@@ -228,7 +228,7 @@ export default function App() {
       if (!e.metaKey && !e.ctrlKey) return;
       e.preventDefault();
       // deltaY ~100 per mouse-wheel tick; trackpad sends smaller values continuously.
-      setZoom(z => Math.max(50, Math.min(200, Math.round(z - e.deltaY / 10))));
+      setZoom(z => Math.max(50, Math.min(200, Math.round(z - e.deltaY / 5))));
     };
     el.addEventListener('wheel', handler, { passive: false });
     return () => el.removeEventListener('wheel', handler);
