@@ -207,6 +207,32 @@ body {
   margin-bottom: 10px;
 }
 
+.scaling-toggle {
+  display: flex;
+  gap: 2px;
+  margin-left: 14px;
+  padding-left: 14px;
+  border-left: 1px solid var(--border);
+}
+
+.scaling-btn {
+  padding: 3px 9px;
+  font-size: 11px;
+  font-family: inherit;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: white;
+  color: var(--subtle);
+  cursor: pointer;
+  transition: background 0.1s, border-color 0.1s, color 0.1s;
+}
+.scaling-btn:hover { background: #f0ede8; border-color: #bbb; }
+.scaling-btn.active {
+  background: #eff6ff;
+  border-color: #93c5fd;
+  color: var(--accent);
+}
+
 /* ── Form overview strip ─────────────────────────────────────── */
 
 .form-overview {

@@ -311,6 +311,15 @@ export function computeLayout(phrases, lineBreakIndices, structuralMarkers = [],
     return levels;
   });
 
+  // Uniform mode scales every row by the same px-per-bar, so an 8-bar phrase is
+  // the same width wherever it appears. The longest system sets the scale, so
+  // that one still fills the width and none can overflow; shorter systems end
+  // early and sit left-aligned. Justified mode (the default) stretches each row
+  // to fill the width independently.
+  const uniformBarWidth = USABLE_WIDTH / Math.max(
+    1, ...rows.map(r => r.reduce((sum, p) => sum + p.length, 0))
+  );
+
   let yOffset = HEADER_HEIGHT;
 
   const positionedRows = rows.map((row, rowIndex) => {
@@ -322,7 +331,7 @@ export function computeLayout(phrases, lineBreakIndices, structuralMarkers = [],
     const levelSet = rowLevelSets[rowIndex];
     const topPadding = rowTopPaddingForLevels(levelSet);
     const totalBars = row.reduce((sum, p) => sum + p.length, 0);
-    const barWidth = USABLE_WIDTH / totalBars;
+    const barWidth = opts.barScaling === 'uniform' ? uniformBarWidth : USABLE_WIDTH / totalBars;
     const rowY = yOffset;
 
     // Provisional slur line; may be pushed down below if markings above the

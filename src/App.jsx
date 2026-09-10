@@ -49,6 +49,7 @@ const defaultDiagramState = {
   composer: '',
   quickEntryText: '',
   firstBar: 1,
+  barScaling: 'justified',
   rehearsalMarks: [],
   rehearsalMarkStyle: 'letters',
   structuralMarkers: [],
@@ -123,6 +124,7 @@ function sanitizeDiagram(data) {
     composer: asStr(data.composer, 500),
     quickEntryText: asStr(data.quickEntryText),
     firstBar: Number.isFinite(data.firstBar) ? data.firstBar : 1,
+    barScaling: data.barScaling === 'uniform' ? 'uniform' : 'justified',
     rehearsalMarks: asArr(data.rehearsalMarks),
     rehearsalMarkStyle: ['letters', 'numbers', 'roman', 'bars'].includes(data.rehearsalMarkStyle)
       ? data.rehearsalMarkStyle : 'letters',
@@ -353,14 +355,14 @@ export default function App() {
   const hasHairpins = state.hairpins.length > 0;
   const layout = useMemo(
     () => computeLayout(phrases, lineBreakIndices, state.structuralMarkers, state.phraseOverlaps, state.rowSpacing, {
-      hasKeyLane, hasHairpins,
+      hasKeyLane, hasHairpins, barScaling: state.barScaling,
       // Needed so the layout can reserve headroom for markings above the line
       rehearsalMarks: state.rehearsalMarks,
       fermatas: state.fermatas,
       phraseThemes: state.phraseThemes,
     }),
     [phrases, lineBreakIndices, state.structuralMarkers, state.phraseOverlaps, state.rowSpacing,
-     hasKeyLane, hasHairpins, state.rehearsalMarks, state.fermatas, state.phraseThemes]
+     hasKeyLane, hasHairpins, state.barScaling, state.rehearsalMarks, state.fermatas, state.phraseThemes]
   );
 
   // Overlap popover position (fixed coordinates derived from SVG rect)
@@ -1074,6 +1076,19 @@ export default function App() {
               <span className="zoom-label">{zoom}%</span>
               <button className="btn zoom-btn" onClick={() => setZoom(z => Math.min(200, z + 10))} title="Zoom in">+</button>
               {zoom !== 100 && <button className="btn zoom-btn" onClick={() => setZoom(100)} title="Reset zoom">↺</button>}
+
+              <div className="scaling-toggle" role="group" aria-label="Bar scaling">
+                <button
+                  className={`scaling-btn${state.barScaling !== 'uniform' ? ' active' : ''}`}
+                  onClick={() => { recordHistory(); setState(s => ({ ...s, barScaling: 'justified' })); }}
+                  title="Each system stretches to fill the width"
+                >Justified</button>
+                <button
+                  className={`scaling-btn${state.barScaling === 'uniform' ? ' active' : ''}`}
+                  onClick={() => { recordHistory(); setState(s => ({ ...s, barScaling: 'uniform' })); }}
+                  title="Same width per bar on every system, so equal phrases match across systems"
+                >Uniform</button>
+              </div>
             </div>
             <div className="zoom-wrap" style={{ width: `${zoom}%`, minWidth: zoom < 100 ? `${zoom}%` : undefined }}>
             <DiagramCanvas

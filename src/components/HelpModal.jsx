@@ -221,6 +221,14 @@ export default function HelpModal({ onClose }) {
               the mouse wheel. The reset button (↺) returns to 100%.
             </p>
             <p>
+              The <strong>Justified / Uniform</strong> toggle sets how bars are scaled.
+              <em> Justified</em> (the default) stretches each system to fill the width, so
+              proportions are only meaningful within a system. <em>Uniform</em> gives every
+              system the same width per bar — an 8-bar phrase is then the same width wherever
+              it appears, so lengths can be compared across systems. The longest system sets
+              the scale and shorter ones end early, left-aligned.
+            </p>
+            <p>
               Drag the <strong>↕</strong> handles in the left margin between rows to add extra
               vertical space between systems.
             </p>
